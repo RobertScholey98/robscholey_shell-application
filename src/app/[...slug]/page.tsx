@@ -24,7 +24,8 @@ export default function AppPage({ params }: { params: Promise<{ slug: string[] }
   }
 
   if (!isAuthenticated) {
-    router.replace('/');
+    const pathname = `/${slug.join('/')}`;
+    router.replace(`/?next=${encodeURIComponent(pathname)}`);
     return null;
   }
 

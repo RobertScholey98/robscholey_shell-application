@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ShellContextMessage, JWTRefreshMessage } from '@robscholey/shell-kit';
+import type { ShellContextMessage, JWTRefreshMessage, NavigateToPathMessage } from '@robscholey/shell-kit';
 import { useSession } from '@/contexts/SessionContext';
 import * as authClient from '@/lib/authClient';
 import type { AppInfo } from '@/lib/types';
@@ -91,7 +91,10 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
         const path = event.data.path;
         if (typeof path === 'string') {
           const shellPath = path ? `/${app.id}/${path}` : `/${app.id}`;
-          window.history.replaceState(null, '', shellPath);
+          // Only push if the path actually changed (avoids duplicate history entries)
+          if (shellPath !== window.location.pathname) {
+            window.history.pushState(null, '', shellPath);
+          }
         }
         return;
       }
@@ -111,6 +114,29 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
       });
     }
   }, [sessionToken, app.id]);
+
+  // Sync browser back/forward to the iframe via navigate-to-path
+  useEffect(() => {
+    function handlePopState() {
+      const contentWindow = iframeRef.current?.contentWindow;
+      if (!contentWindow) return;
+
+      const pathname = window.location.pathname;
+      const prefix = `/${app.id}/`;
+      const childPath = pathname.startsWith(prefix)
+        ? pathname.slice(prefix.length)
+        : '';
+
+      const message: NavigateToPathMessage = {
+        type: 'navigate-to-path',
+        path: childPath,
+      };
+      contentWindow.postMessage(message, appOrigin);
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [app.id, appOrigin]);
 
   return (
     <div className="fixed inset-0 z-40 overflow-hidden">

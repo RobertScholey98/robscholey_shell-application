@@ -65,7 +65,7 @@ beforeEach(() => {
   mockReplace.mockClear();
   mockLogAccess.mockClear();
   mockGetSession.mockClear();
-  vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+  vi.spyOn(window.history, 'pushState').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -149,14 +149,14 @@ describe('AppFrame', () => {
     expect(mockPush).toHaveBeenCalledWith('/');
   });
 
-  it('updates browser URL on route-change message', () => {
+  it('pushes browser history on route-change message', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
     act(() => {
       dispatchChildMessage({ type: 'route-change', path: 'settings/profile' });
     });
 
-    expect(window.history.replaceState).toHaveBeenCalledWith(
+    expect(window.history.pushState).toHaveBeenCalledWith(
       null,
       '',
       '/tracker/settings/profile',
@@ -170,7 +170,24 @@ describe('AppFrame', () => {
       dispatchChildMessage({ type: 'route-change', path: '' });
     });
 
-    expect(window.history.replaceState).toHaveBeenCalledWith(null, '', '/tracker');
+    expect(window.history.pushState).toHaveBeenCalledWith(null, '', '/tracker');
+  });
+
+  it('skips pushState when route-change path matches current pathname', () => {
+    // Simulate current pathname already being /tracker/settings
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, pathname: '/tracker/settings' },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<AppFrame app={mockApp} subPath={null} />);
+
+    act(() => {
+      dispatchChildMessage({ type: 'route-change', path: 'settings' });
+    });
+
+    expect(window.history.pushState).not.toHaveBeenCalled();
   });
 
   it('sends jwt-refresh on request-jwt-refresh message', async () => {
@@ -218,5 +235,58 @@ describe('AppFrame', () => {
     });
 
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('sends navigate-to-path to iframe on popstate with sub-path', () => {
+    const { container } = render(<AppFrame app={mockApp} subPath={null} />);
+    const iframe = container.querySelector('iframe')!;
+
+    const mockPostMessage = vi.fn();
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      configurable: true,
+    });
+
+    // Simulate browser back/forward to /tracker/settings/profile
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, pathname: '/tracker/settings/profile' },
+      writable: true,
+      configurable: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      { type: 'navigate-to-path', path: 'settings/profile' },
+      APP_ORIGIN,
+    );
+  });
+
+  it('sends navigate-to-path with empty path when at app root', () => {
+    const { container } = render(<AppFrame app={mockApp} subPath={null} />);
+    const iframe = container.querySelector('iframe')!;
+
+    const mockPostMessage = vi.fn();
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      configurable: true,
+    });
+
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, pathname: '/tracker' },
+      writable: true,
+      configurable: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      { type: 'navigate-to-path', path: '' },
+      APP_ORIGIN,
+    );
   });
 });

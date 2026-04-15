@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Button,
   Drawer,
@@ -194,9 +195,23 @@ function AuthenticatedView({ userName }: { userName: string }) {
   );
 }
 
-/** Homepage — switches between lock screen and app launcher. */
-export default function Home() {
+/** Checks that a next path is safe to redirect to (prevents open redirects). */
+function isValidNextPath(path: string): boolean {
+  return path.startsWith('/') && !path.includes('://');
+}
+
+/** Homepage inner content — reads search params for intended destination redirect. */
+function HomeContent() {
   const { isAuthenticated, user } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const nextPath = searchParams.get('next');
+
+  useEffect(() => {
+    if (isAuthenticated && nextPath && isValidNextPath(nextPath)) {
+      router.replace(nextPath);
+    }
+  }, [isAuthenticated, nextPath, router]);
 
   return (
     <main id="main-content" className="flex flex-1 flex-col">
@@ -206,5 +221,14 @@ export default function Home() {
         <LandingView />
       )}
     </main>
+  );
+}
+
+/** Homepage — switches between lock screen and app launcher. */
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }
