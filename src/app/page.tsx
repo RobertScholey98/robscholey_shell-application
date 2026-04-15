@@ -21,7 +21,9 @@ import {
 } from '@robscholey/shell-kit/ui';
 import { identity, bio, socialLinks, actions } from '@/content/homepage';
 import { GithubIcon, LinkedInIcon } from '@/components/icons';
+import { Suspense } from 'react';
 import { CodeInput } from '@/components/CodeInput';
+import { OwnerLogin } from '@/components/OwnerLogin';
 import { useSession } from '@/contexts/SessionContext';
 
 const iconMap = {
@@ -139,6 +141,10 @@ export default function Home() {
           <ActionDialog actionKey="access" action={actions.access} />
         </div>
       </div>
+
+      <Suspense>
+        <OwnerLogin />
+      </Suspense>
     </main>
   );
 }
