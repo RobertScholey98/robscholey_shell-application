@@ -19,7 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@robscholey/shell-kit": ["../robscholey_shell-kit/src/index.ts"],
+      "@robscholey/shell-kit/ui": ["../robscholey_shell-kit/src/ui/index.ts"],
+      "@robscholey/shell-kit/ui/theme.css": ["../robscholey_shell-kit/src/ui/theme.css"]
     }
   },
   "include": [
