@@ -106,6 +106,15 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
     return () => window.removeEventListener('message', handleMessage);
   }, [appOrigin, sendShellContext, sessionToken, app.id, router]);
 
+  // Set document title to the app name while the iframe is active
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = `${app.name} — Rob Scholey`;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [app.name]);
+
   // Log access on mount (fire-and-forget)
   useEffect(() => {
     if (sessionToken) {
