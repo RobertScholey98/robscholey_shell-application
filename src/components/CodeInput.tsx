@@ -1,24 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button, Input, Label } from '@robscholey/shell-kit/ui';
 import { useSession } from '@/contexts/SessionContext';
 import { AuthClientError } from '@/lib/authClient';
 
-/** Access code input with optional password field. Validates against the auth service. */
+/** Access code input pinned to the bottom of the viewport. Uses sonner toasts for error feedback. */
 export function CodeInput() {
   const { submitCode } = useSession();
 
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [needsPassword, setNeedsPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /** Handles form submission — validates the code, shows password field if needed, or sets session on success. */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setIsSubmitting(true);
 
     try {
@@ -29,61 +28,60 @@ export function CodeInput() {
         setIsSubmitting(false);
         return;
       }
-
-      // Success — session context is now populated, component will unmount or parent will react
     } catch (err) {
       if (err instanceof AuthClientError) {
         if (err.status === 429) {
-          setError('Too many attempts. Please try again later.');
+          toast.error('Too many attempts. Please try again later.');
         } else {
-          setError(err.message);
+          toast.error(err.message);
         }
       } else {
-        setError('Something went wrong. Please try again.');
+        toast.error('Something went wrong. Please try again.');
       }
       setIsSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="space-y-2">
-        <Label htmlFor="access-code">Access code</Label>
-        <Input
-          id="access-code"
-          value={code}
-          onChange={(e) => {
-            setCode(e.target.value);
-            setError(null);
-            if (!needsPassword) setPassword('');
-          }}
-          placeholder="Enter your access code"
-          disabled={isSubmitting}
-          autoComplete="off"
-        />
-      </div>
+    <form onSubmit={handleSubmit} aria-busy={isSubmitting} className="space-y-3">
+      <Label htmlFor="access-code" className="sr-only">
+        Access code
+      </Label>
+      <Input
+        id="access-code"
+        value={code}
+        onChange={(e) => {
+          setCode(e.target.value);
+          if (!needsPassword) setPassword('');
+        }}
+        placeholder="Access code"
+        disabled={isSubmitting}
+        autoComplete="off"
+        autoCapitalize="characters"
+      />
 
       {needsPassword && (
-        <div className="space-y-2">
-          <Label htmlFor="access-password">Password</Label>
+        <>
+          <Label htmlFor="access-password" className="sr-only">
+            Password
+          </Label>
           <Input
             id="access-password"
             type="password"
             value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError(null);
-            }}
-            placeholder="Enter your password"
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
             disabled={isSubmitting}
-            autoFocus
           />
-        </div>
+        </>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      <Button type="submit" disabled={isSubmitting || !code.trim()} className="w-full">
+      <Button
+        type="submit"
+        disabled={isSubmitting || !code.trim() || (needsPassword && !password.trim())}
+        size="lg"
+        className="w-full"
+      >
         {isSubmitting ? 'Validating...' : needsPassword ? 'Submit' : 'Enter'}
       </Button>
     </form>

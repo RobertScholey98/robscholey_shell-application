@@ -1,15 +1,18 @@
-/** Homepage content — edit here, not in the component. */
+/**
+ * Homepage content — edit here, not in the component.
+ * All text, links, and form configurations for the landing page.
+ */
 
+/** The site owner's name and professional title. */
 export const identity = {
   name: 'Rob Scholey',
   title: 'Software Engineer',
 };
 
-export const bio = [
-  'This is my personal "everything" app — a unified portal for my portfolio, projects, and any websites or PWAs I build for myself. Every sub-application lives on its own subdomain with a single authentication layer and simplified hosting setup.',
-  "In an age where AI and bots scrape everything publicly available, I value my privacy. My portfolio and projects are access-restricted — not because they're secret, but because I choose who sees them and when. If you'd like access, request it below.",
-];
+/** One-line description shown below the title on the landing page. */
+export const tagline = 'A private, unified portal for my projects and portfolio.';
 
+/** Social media links shown in the footer of the landing page. */
 export const socialLinks = [
   {
     label: 'GitHub',
@@ -23,6 +26,7 @@ export const socialLinks = [
   },
 ];
 
+/** Contact and access request drawer configurations. */
 export const actions = {
   message: {
     cardTitle: 'Send me a message',

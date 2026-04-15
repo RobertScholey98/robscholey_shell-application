@@ -1,40 +1,55 @@
 'use client';
 
-import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
   Input,
   Label,
 } from '@robscholey/shell-kit/ui';
 import { useSession } from '@/contexts/SessionContext';
 import { AuthClientError } from '@/lib/authClient';
 
+/** Props for the {@link OwnerLogin} component. */
+export interface OwnerLoginProps {
+  /** Whether the drawer is open. */
+  open: boolean;
+  /** Callback to change the open state. */
+  onOpenChange: (open: boolean) => void;
+}
+
 /**
- * Owner login dialog. Opens automatically when `?owner` is in the URL.
+ * Owner login drawer. Controlled by parent via `open`/`onOpenChange` props.
  * Provides username/password form that authenticates via the session context.
  */
-export function OwnerLogin() {
-  const searchParams = useSearchParams();
+export function OwnerLogin({ open, onOpenChange }: OwnerLoginProps) {
   const { login, isAuthenticated } = useSession();
 
-  const [open, setOpen] = useState(searchParams.get('owner') !== null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /** Reset form state when the drawer closes. */
+  useEffect(() => {
+    if (!open) {
+      setUsername('');
+      setPassword('');
+      setError(null);
+      setIsSubmitting(false);
+    }
+  }, [open]);
+
   if (isAuthenticated) return null;
 
   /**
    * Handles login form submission.
-   * On success, closes the dialog. On failure, displays the error message.
+   * On success, closes the drawer. On failure, displays the error message.
    */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +58,7 @@ export function OwnerLogin() {
 
     try {
       await login(username, password);
-      setOpen(false);
+      onOpenChange(false);
     } catch (err) {
       if (err instanceof AuthClientError) {
         if (err.status === 429) {
@@ -59,13 +74,13 @@ export function OwnerLogin() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Owner login</DialogTitle>
-          <DialogDescription>Sign in with your owner credentials.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Owner login</DrawerTitle>
+          <DrawerDescription>Sign in with your owner credentials.</DrawerDescription>
+        </DrawerHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4" aria-busy={isSubmitting}>
           <div className="space-y-2">
             <Label htmlFor="owner-username">Username</Label>
             <Input
@@ -78,7 +93,8 @@ export function OwnerLogin() {
               placeholder="Username"
               disabled={isSubmitting}
               autoComplete="username"
-              autoFocus
+              aria-invalid={!!error}
+              aria-describedby={error ? 'owner-error' : undefined}
             />
           </div>
           <div className="space-y-2">
@@ -94,16 +110,27 @@ export function OwnerLogin() {
               placeholder="Password"
               disabled={isSubmitting}
               autoComplete="current-password"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'owner-error' : undefined}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !username.trim() || !password.trim()}>
+          {error && (
+            <p id="owner-error" className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+          <DrawerFooter>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={isSubmitting || !username.trim() || !password.trim()}
+            >
               {isSubmitting ? 'Signing in...' : 'Sign in'}
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

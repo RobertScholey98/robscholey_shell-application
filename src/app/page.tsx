@@ -1,27 +1,25 @@
 'use client';
 
-import { MessageSquare, KeyRound } from 'lucide-react';
+import { useState } from 'react';
+import Image from 'next/image';
 import {
   Button,
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
   Input,
   Label,
   Separator,
   Textarea,
+  Typography,
 } from '@robscholey/shell-kit/ui';
-import { identity, bio, socialLinks, actions } from '@/content/homepage';
+import { identity, tagline, socialLinks, actions } from '@/content/homepage';
 import { GithubIcon, LinkedInIcon } from '@/components/icons';
-import { Suspense } from 'react';
+import { AppNav } from '@/components/AppNav';
 import { CodeInput } from '@/components/CodeInput';
 import { OwnerLogin } from '@/components/OwnerLogin';
 import { useSession } from '@/contexts/SessionContext';
@@ -31,46 +29,34 @@ const iconMap = {
   linkedin: LinkedInIcon,
 } as const;
 
-const actionIconMap = {
-  message: MessageSquare,
-  access: KeyRound,
-} as const;
-
-/** Renders a dialog with a form from action content config. */
-function ActionDialog({
-  actionKey,
+/** Renders a drawer triggered by a button. */
+function ActionDrawer({
   action,
 }: {
-  actionKey: keyof typeof actionIconMap;
   action: (typeof actions)[keyof typeof actions];
 }) {
-  const Icon = actionIconMap[actionKey];
-
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Card className="cursor-pointer transition-colors hover:bg-accent">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Icon className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">{action.cardTitle}</CardTitle>
-            </div>
-            <CardDescription>{action.cardDescription}</CardDescription>
-          </CardHeader>
-        </Card>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{action.dialogTitle}</DialogTitle>
-          <DialogDescription>{action.dialogDescription}</DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4">
+    <Drawer>
+      <DrawerTrigger asChild>
+        <Button variant="outline" className="w-full sm:w-auto">
+          {action.cardTitle}
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>{action.dialogTitle}</DrawerTitle>
+          <DrawerDescription>{action.dialogDescription}</DrawerDescription>
+        </DrawerHeader>
+        <form className="space-y-4 mt-4" onSubmit={(e) => e.preventDefault()}>
           {action.fields.map((field) => (
             <div key={field.id} className="space-y-2">
               <Label htmlFor={field.id}>
                 {field.label}
                 {'labelSuffix' in field && (
-                  <span className="text-muted-foreground font-normal"> {field.labelSuffix}</span>
+                  <Typography variant="small" as="span" className="font-normal">
+                    {' '}
+                    {field.labelSuffix}
+                  </Typography>
                 )}
               </Label>
               {field.type === 'textarea' ? (
@@ -80,71 +66,145 @@ function ActionDialog({
                   rows={'rows' in field ? field.rows : 3}
                 />
               ) : (
-                <Input id={field.id} type={field.type} placeholder={field.placeholder} />
+                <Input
+                  id={field.id}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  inputMode={field.type === 'email' ? 'email' : undefined}
+                />
               )}
             </div>
           ))}
+          <DrawerFooter>
+            <Button type="submit" size="lg" className="w-full">
+              {action.submitLabel}
+            </Button>
+          </DrawerFooter>
         </form>
-        <DialogFooter>
-          <Button type="submit">{action.submitLabel}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
-/** Public homepage — bio, contact, and access request. */
-export default function Home() {
-  const { isAuthenticated, isLoading } = useSession();
+/** Unauthenticated view — clean lock screen with clear user journey segmentation. */
+function LandingView() {
+  const [ownerLoginOpen, setOwnerLoginOpen] = useState(false);
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
-      <div className="w-full max-w-2xl space-y-10">
-        <div className="space-y-3">
-          <h1 className="text-4xl font-bold tracking-tight">{identity.name}</h1>
-          <p className="text-xl text-muted-foreground">{identity.title}</p>
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:py-16">
+      <div className="w-full max-w-sm sm:max-w-md flex flex-col items-center">
+        {/* Profile photo */}
+        <div className="mb-4">
+          <Image
+            src="/rob.png"
+            alt="Rob Scholey"
+            width={100}
+            height={100}
+            className="rounded-full object-cover"
+            priority
+          />
         </div>
 
-        <div className="space-y-4 text-muted-foreground leading-relaxed">
-          {bio.map((paragraph, i) => (
-            <p key={i}>{paragraph}</p>
-          ))}
+        {/* Name — tapping opens owner login (no visual indication) */}
+        <Typography
+          variant="h1"
+          align="center"
+          className="cursor-default"
+          onClick={() => {
+            if (document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            setOwnerLoginOpen(true);
+          }}
+        >
+          {identity.name}
+        </Typography>
+        <Typography variant="subtitle" align="center" className="mt-1">
+          {identity.title}
+        </Typography>
+        <Typography variant="muted" align="center" className="mt-2">
+          {tagline}
+        </Typography>
+
+        {/* Primary action: the gate */}
+        <section aria-label="Access code entry" className="w-full mt-6">
+          <CodeInput />
+        </section>
+
+        {/* Divider */}
+        <div className="w-full flex items-center gap-3 mt-6 mb-4">
+          <Separator className="flex-1" />
+          <Typography variant="small" as="span" className="whitespace-nowrap">
+            Need access?
+          </Typography>
+          <Separator className="flex-1" />
         </div>
 
-        <Separator />
+        {/* Secondary actions */}
+        <div className="w-full flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4">
+          <ActionDrawer action={actions.access} />
+          <ActionDrawer action={actions.message} />
+        </div>
 
-        {!isLoading && !isAuthenticated && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Have an access code?</h2>
-              <CodeInput />
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-3">
+        {/* Social footer */}
+        <div className="flex gap-2 mt-6">
           {socialLinks.map((link) => {
             const Icon = iconMap[link.icon];
             return (
-              <Button key={link.href} variant="outline" asChild>
-                <a href={link.href} target="_blank" rel="noopener noreferrer">
-                  <Icon />
-                  {link.label}
-                </a>
-              </Button>
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={link.label}
+                className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground active:text-foreground transition-colors"
+              >
+                <Icon className="h-5 w-5" />
+              </a>
             );
           })}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ActionDialog actionKey="message" action={actions.message} />
-          <ActionDialog actionKey="access" action={actions.access} />
-        </div>
+        <OwnerLogin open={ownerLoginOpen} onOpenChange={setOwnerLoginOpen} />
       </div>
+    </div>
+  );
+}
 
-      <Suspense>
-        <OwnerLogin />
-      </Suspense>
+/** Authenticated view — list of apps with descriptions. */
+function AuthenticatedView({ userName }: { userName: string }) {
+  const { logout } = useSession();
+
+  return (
+    <div className="flex flex-1 flex-col px-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-12">
+      <div className="w-full max-w-2xl mx-auto space-y-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <Typography variant="h2">Welcome, {userName}</Typography>
+            <Typography variant="muted">Your apps:</Typography>
+          </div>
+          <Button variant="ghost" onClick={() => logout()} className="text-muted-foreground">
+            Log out
+          </Button>
+        </div>
+
+        <AppNav />
+      </div>
+    </div>
+  );
+}
+
+/** Homepage — switches between lock screen and app launcher. */
+export default function Home() {
+  const { isAuthenticated, user } = useSession();
+
+  return (
+    <main id="main-content" className="flex flex-1 flex-col">
+      {isAuthenticated && user ? (
+        <AuthenticatedView userName={user.name} />
+      ) : (
+        <LandingView />
+      )}
     </main>
   );
 }
