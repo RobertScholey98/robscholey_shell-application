@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Poppins, Source_Code_Pro } from 'next/font/google';
+import { Providers } from '@/components/Providers';
 import './globals.css';
 
 const poppins = Poppins({
@@ -41,7 +42,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${poppins.variable} ${sourceCodePro.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

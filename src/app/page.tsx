@@ -21,6 +21,8 @@ import {
 } from '@robscholey/shell-kit/ui';
 import { identity, bio, socialLinks, actions } from '@/content/homepage';
 import { GithubIcon, LinkedInIcon } from '@/components/icons';
+import { CodeInput } from '@/components/CodeInput';
+import { useSession } from '@/contexts/SessionContext';
 
 const iconMap = {
   github: GithubIcon,
@@ -91,6 +93,8 @@ function ActionDialog({
 
 /** Public homepage — bio, contact, and access request. */
 export default function Home() {
+  const { isAuthenticated, isLoading } = useSession();
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-2xl space-y-10">
@@ -106,6 +110,15 @@ export default function Home() {
         </div>
 
         <Separator />
+
+        {!isLoading && !isAuthenticated && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold mb-3">Have an access code?</h2>
+              <CodeInput />
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           {socialLinks.map((link) => {
