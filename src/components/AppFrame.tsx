@@ -88,8 +88,9 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
       }
 
       if (type === 'route-change') {
-        const path = event.data.path;
-        if (typeof path === 'string') {
+        const rawPath = event.data.path;
+        if (typeof rawPath === 'string') {
+          const path = rawPath.replace(/^\/+/, '');
           const shellPath = path ? `/${app.id}/${path}` : `/${app.id}`;
           // Only push if the path actually changed (avoids duplicate history entries)
           if (shellPath !== window.location.pathname) {

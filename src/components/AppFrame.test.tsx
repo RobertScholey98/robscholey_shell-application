@@ -163,6 +163,16 @@ describe('AppFrame', () => {
     );
   });
 
+  it('strips leading slash from route-change path', () => {
+    render(<AppFrame app={mockApp} subPath={null} />);
+
+    act(() => {
+      dispatchChildMessage({ type: 'route-change', path: '/example' });
+    });
+
+    expect(window.history.pushState).toHaveBeenCalledWith(null, '', '/tracker/example');
+  });
+
   it('handles route-change with empty path', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
