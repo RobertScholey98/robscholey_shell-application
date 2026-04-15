@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Poppins, Source_Code_Pro } from 'next/font/google';
 import './globals.css';
 
@@ -16,6 +16,25 @@ const sourceCodePro = Source_Code_Pro({
 export const metadata: Metadata = {
   title: 'Rob Scholey',
   description: 'Software Engineer',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'Rob Scholey',
+    statusBarStyle: 'default',
+  },
+  openGraph: {
+    title: 'Rob Scholey',
+    description: 'Software Engineer',
+    type: 'website',
+  },
+  icons: {
+    icon: '/icon-192.svg',
+    apple: '/icon-192.svg',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#006546',
 };
 
 /** Root layout for the shell application. */
