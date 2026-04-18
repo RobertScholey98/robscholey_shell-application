@@ -14,7 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@robscholey/shell-kit": "link:../robscholey_shell-kit",
+    "@robscholey/shell-kit": "workspace:*",
     "lucide-react": "^1.8.0",
     "motion": "^12.38.0",
     "next": "16.2.3",
