@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation';
 import type { ShellContextMessage, JWTRefreshMessage, NavigateToPathMessage } from '@robscholey/shell-kit';
 import { useSession } from '@/contexts/SessionContext';
 import * as authClient from '@/lib/authClient';
-import type { AppInfo } from '@/lib/types';
+import type { App } from '@robscholey/contracts';
 
 /** Props for the {@link AppFrame} component. */
 export interface AppFrameProps {
   /** The sub-application to embed. */
-  app: AppInfo;
+  app: App;
   /** The sub-path to pass to the child app (segments after the slug). */
   subPath: string | null;
 }

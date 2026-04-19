@@ -3,7 +3,7 @@ import { Poppins, Source_Code_Pro } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { Providers } from '@/components/Providers';
 import * as authClient from '@/lib/authClient';
-import type { SessionResponse } from '@/lib/types';
+import type { SessionResponse } from '@robscholey/contracts';
 import './globals.css';
 
 const poppins = Poppins({

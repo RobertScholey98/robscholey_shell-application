@@ -12,12 +12,12 @@ import {
 import type { ReactNode } from 'react';
 import * as authClient from '@/lib/authClient';
 import type {
-  AppInfo,
+  App,
   AuthResponse,
   RequiresPasswordResponse,
   SessionResponse,
-  UserInfo,
-} from '@/lib/types';
+  User,
+} from '@robscholey/contracts';
 
 const COOKIE_NAME = 'rs_session';
 const JWT_REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh 5 minutes before expiry
@@ -63,9 +63,9 @@ export interface SessionContextValue {
   /** The current JWT, or null if not authenticated. */
   jwt: string | null;
   /** The authenticated user, or null. */
-  user: UserInfo | null;
+  user: User | null;
   /** The apps the current session has access to. */
-  apps: AppInfo[];
+  apps: App[];
   /** Whether the initial session validation is in progress. */
   isLoading: boolean;
   /** Whether the user is authenticated (has a valid session). */
@@ -106,8 +106,8 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     initialSession?.sessionToken ?? null,
   );
   const [jwt, setJwt] = useState<string | null>(initialSession?.jwt ?? null);
-  const [user, setUser] = useState<UserInfo | null>(initialSession?.user ?? null);
-  const [apps, setApps] = useState<AppInfo[]>(initialSession?.apps ?? []);
+  const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
+  const [apps, setApps] = useState<App[]>(initialSession?.apps ?? []);
   const [isLoading, setIsLoading] = useState(!initialSession);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

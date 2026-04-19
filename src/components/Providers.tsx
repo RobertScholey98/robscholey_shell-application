@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 import { SessionProvider } from '@/contexts/SessionContext';
-import type { SessionResponse } from '@/lib/types';
+import type { SessionResponse } from '@robscholey/contracts';
 
 /** Props for the {@link Providers} component. */
 export interface ProvidersProps {

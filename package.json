@@ -14,6 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@robscholey/contracts": "workspace:*",
     "@robscholey/shell-kit": "workspace:*",
     "lucide-react": "^1.8.0",
     "motion": "^12.38.0",

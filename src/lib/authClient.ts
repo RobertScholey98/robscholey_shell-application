@@ -4,7 +4,7 @@ import type {
   SessionResponse,
   AppMeta,
   ErrorResponse,
-} from './types';
+} from '@robscholey/contracts';
 
 /**
  * Resolves the auth service base URL for the current runtime.

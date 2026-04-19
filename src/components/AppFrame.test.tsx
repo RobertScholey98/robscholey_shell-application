@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { AppFrame } from './AppFrame';
-import type { AppInfo } from '@/lib/types';
+import type { App } from '@robscholey/contracts';
 
 const APP_ORIGIN = 'https://tracker.robscholey.com';
 
-const mockApp: AppInfo = {
+const mockApp: App = {
   id: 'tracker',
   name: 'Tracker',
   url: `${APP_ORIGIN}/`,
@@ -23,7 +23,12 @@ vi.mock('next/navigation', () => ({
 
 const mockSession = {
   jwt: 'test-jwt-123',
-  user: { id: 'user-1', name: 'Rob', type: 'owner' as const },
+  user: {
+    id: 'user-1',
+    name: 'Rob',
+    type: 'owner' as const,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
   sessionToken: 'sess_test-token',
   apps: [mockApp],
   isLoading: false,
@@ -41,7 +46,7 @@ const mockLogAccess = vi.fn().mockResolvedValue(undefined);
 const mockGetSession = vi.fn().mockResolvedValue({
   sessionToken: 'sess_test-token',
   jwt: 'refreshed-jwt',
-  user: { id: 'user-1', name: 'Rob', type: 'owner' },
+  user: { id: 'user-1', name: 'Rob', type: 'owner', createdAt: '2026-01-01T00:00:00.000Z' },
   apps: [mockApp],
 });
 
