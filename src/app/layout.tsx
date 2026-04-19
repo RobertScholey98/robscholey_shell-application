@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Poppins, Source_Code_Pro } from 'next/font/google';
+import { cookies } from 'next/headers';
 import { Providers } from '@/components/Providers';
+import * as authClient from '@/lib/authClient';
+import type { SessionResponse } from '@/lib/types';
 import './globals.css';
 
 const poppins = Poppins({
@@ -39,8 +42,30 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
+const SESSION_COOKIE = 'rs_session';
+
+/**
+ * Resolves the session server-side so the first render already reflects the
+ * authenticated state — no unauthenticated flash while the client bootstraps.
+ * Falls back to null on any failure; the client SessionProvider will treat
+ * that as "not authenticated" (or retry, depending on the cookie state).
+ */
+async function resolveInitialSession(): Promise<SessionResponse | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    return await authClient.getSession(token);
+  } catch {
+    return null;
+  }
+}
+
 /** Root layout for the shell application. */
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  const initialSession = await resolveInitialSession();
+
   return (
     <html lang="en" className={`${poppins.variable} ${sourceCodePro.variable} min-h-dvh antialiased`}>
       <body className="min-h-dvh flex flex-col font-sans">
@@ -50,7 +75,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Skip to content
         </a>
-        <Providers>{children}</Providers>
+        <Providers initialSession={initialSession}>{children}</Providers>
       </body>
     </html>
   );

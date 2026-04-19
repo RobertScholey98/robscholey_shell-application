@@ -15,6 +15,7 @@ import type {
   AppInfo,
   AuthResponse,
   RequiresPasswordResponse,
+  SessionResponse,
   UserInfo,
 } from '@/lib/types';
 
@@ -91,15 +92,23 @@ export function useSession(): SessionContextValue {
 /** Props for the {@link SessionProvider} component. */
 export interface SessionProviderProps {
   children: ReactNode;
+  /**
+   * Pre-resolved session from the server, used to avoid the client-side
+   * auth flash. When present, initial state hydrates from it and the
+   * mount-time fetch is skipped (only the JWT refresh timer is set).
+   */
+  initialSession?: SessionResponse | null;
 }
 
 /** Provides session state and auth methods to the component tree. */
-export function SessionProvider({ children }: SessionProviderProps) {
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [jwt, setJwt] = useState<string | null>(null);
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [apps, setApps] = useState<AppInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function SessionProvider({ children, initialSession }: SessionProviderProps) {
+  const [sessionToken, setSessionToken] = useState<string | null>(
+    initialSession?.sessionToken ?? null,
+  );
+  const [jwt, setJwt] = useState<string | null>(initialSession?.jwt ?? null);
+  const [user, setUser] = useState<UserInfo | null>(initialSession?.user ?? null);
+  const [apps, setApps] = useState<AppInfo[]>(initialSession?.apps ?? []);
+  const [isLoading, setIsLoading] = useState(!initialSession);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -145,8 +154,18 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [scheduleRefresh],
   );
 
-  // Validate session on mount
+  // Validate session on mount (skipped when the server already resolved it)
   useEffect(() => {
+    if (initialSession) {
+      // Already hydrated from SSR — just arm the refresh timer and move on.
+      scheduleRefresh(initialSession.sessionToken, initialSession.jwt);
+      return () => {
+        if (refreshTimerRef.current) {
+          clearTimeout(refreshTimerRef.current);
+        }
+      };
+    }
+
     const token = getCookie(COOKIE_NAME);
 
     if (!token) {
@@ -175,7 +194,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [scheduleRefresh]);
+  }, [initialSession, scheduleRefresh]);
 
   /**
    * Logs in as the owner with username and password.
