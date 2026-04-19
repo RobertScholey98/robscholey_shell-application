@@ -3,8 +3,39 @@ import type {
   RequiresPasswordResponse,
   SessionResponse,
   AppMeta,
+  ErrorField,
   ErrorResponse,
 } from '@robscholey/contracts';
+import { ErrorCode } from '@robscholey/contracts';
+
+/**
+ * The three fields consumed from a failed-response envelope, destructured
+ * at each call site to construct an {@link AuthClientError}. Kept as an
+ * internal interface so both helpers return the same shape.
+ */
+interface ClientErrorDetail {
+  code: ErrorCode;
+  message: string;
+  fields?: ErrorField[];
+}
+
+/**
+ * Parses the shared `{ error: { code, message, fields? } }` envelope from a
+ * failed auth-service response. Defensive fallbacks handle a malformed body
+ * so the client never throws a secondary `TypeError`.
+ *
+ * @param data - The parsed JSON body, or `undefined` when the body failed to parse.
+ * @returns The code/message/fields to construct an {@link AuthClientError} with.
+ */
+function extractErrorDetail(data: unknown): ClientErrorDetail {
+  const envelope = data as Partial<ErrorResponse> | undefined;
+  const err = envelope?.error;
+  return {
+    code: err?.code ?? ErrorCode.Internal,
+    message: err?.message ?? 'Request failed',
+    fields: err?.fields,
+  };
+}
 
 /**
  * Resolves the auth service base URL for the current runtime.
@@ -49,10 +80,11 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
     body: JSON.stringify(body),
   });
 
-  const data = await res.json();
+  const data: unknown = await res.json().catch(() => undefined);
 
   if (!res.ok) {
-    throw new AuthClientError((data as ErrorResponse).error || 'Request failed', res.status);
+    const { code, message, fields } = extractErrorDetail(data);
+    throw new AuthClientError(res.status, code, message, fields);
   }
 
   return data as T;
@@ -67,20 +99,35 @@ async function post<T>(path: string, body: Record<string, unknown>): Promise<T> 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(url(path));
 
-  const data = await res.json();
+  const data: unknown = await res.json().catch(() => undefined);
 
   if (!res.ok) {
-    throw new AuthClientError((data as ErrorResponse).error || 'Request failed', res.status);
+    const { code, message, fields } = extractErrorDetail(data);
+    throw new AuthClientError(res.status, code, message, fields);
   }
 
   return data as T;
 }
 
-/** Error thrown by auth client methods. Includes the HTTP status code. */
+/**
+ * Error thrown by auth client methods. Mirrors the shared `ErrorResponse`
+ * envelope: the HTTP status stays available for transport-level branching,
+ * and `code` is the stable machine-readable discriminator clients should
+ * prefer over string-matching on `message`. `fields` carries zod issue
+ * detail for validation errors.
+ */
 export class AuthClientError extends Error {
+  /**
+   * @param status - HTTP status code from the failed response.
+   * @param code - Namespaced error code from the response envelope.
+   * @param message - Human-facing message from the response envelope.
+   * @param fields - Per-field issues for validation errors; `undefined` otherwise.
+   */
   constructor(
-    message: string,
     public readonly status: number,
+    public readonly code: ErrorCode,
+    message: string,
+    public readonly fields?: ErrorField[],
   ) {
     super(message);
     this.name = 'AuthClientError';
@@ -149,7 +196,7 @@ export async function getAppMeta(slug: string): Promise<AppMeta | null> {
   try {
     return await get<AppMeta>(`/apps/${encodeURIComponent(slug)}/meta`);
   } catch (e) {
-    if (e instanceof AuthClientError && e.status === 404) {
+    if (e instanceof AuthClientError && e.code === ErrorCode.NotFound) {
       return null;
     }
     throw e;
