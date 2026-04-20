@@ -21,6 +21,9 @@ import type {
 
 const COOKIE_NAME = 'rs_session';
 const JWT_REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh 5 minutes before expiry
+// Mirrors the auth service's session lifetime so the cookie expires with the
+// server-side record; sent as Max-Age in days to match setCookie's contract.
+const SESSION_COOKIE_MAX_AGE_DAYS = 90;
 
 // --- Cookie helpers ---
 
@@ -160,7 +163,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
       setJwt(response.jwt);
       setUser(response.user);
       setApps(response.apps);
-      setCookie(COOKIE_NAME, response.sessionToken, 90);
+      setCookie(COOKIE_NAME, response.sessionToken, SESSION_COOKIE_MAX_AGE_DAYS);
       scheduleRefresh(response.sessionToken, response.jwt);
     },
     [scheduleRefresh],
