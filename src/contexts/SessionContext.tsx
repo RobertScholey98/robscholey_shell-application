@@ -111,9 +111,15 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
   const [isLoading, setIsLoading] = useState(!initialSession);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Monotonic counter bumped whenever an in-flight refresh should be treated as
+  // stale (logout, a newer refresh, or provider unmount). The async callback
+  // captures its generation at schedule time and bails if the ref has moved on,
+  // so a slow getSession can't re-hydrate state after logout.
+  const refreshGenerationRef = useRef(0);
 
   /** Schedules a JWT refresh before the token expires. */
   const scheduleRefresh = useCallback((token: string, jwtValue: string) => {
+    const generation = ++refreshGenerationRef.current;
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
@@ -126,13 +132,17 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     refreshTimerRef.current = setTimeout(async () => {
       try {
         const session = await authClient.auth.getSession(token);
+        if (refreshGenerationRef.current !== generation) return;
         setJwt(session.jwt);
         setUser(session.user);
         setApps(session.apps);
-        // TODO(phase-b): generation-counter rewrite will restructure the recursive self-schedule.
+        // Recursive self-schedule chains successive refreshes off each new JWT's
+        // expiry. The lint rule flags the forward reference to the local itself;
+        // there is no non-recursive equivalent that keeps the timer chain honest.
         // eslint-disable-next-line react-hooks/immutability
         scheduleRefresh(token, session.jwt);
       } catch {
+        if (refreshGenerationRef.current !== generation) return;
         // Session expired or invalid — clear everything
         setSessionToken(null);
         setJwt(null);
@@ -158,12 +168,19 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
 
   // Validate session on mount (skipped when the server already resolved it)
   useEffect(() => {
+    // Capture the ref objects locally so the cleanup never reads `.current`
+    // after React has potentially swapped the underlying object. The values
+    // we actually mutate/inspect via these refs happen at call time.
+    const generationRef = refreshGenerationRef;
+    const timerRef = refreshTimerRef;
+
     if (initialSession) {
       // Already hydrated from SSR — just arm the refresh timer and move on.
       scheduleRefresh(initialSession.sessionToken, initialSession.jwt);
       return () => {
-        if (refreshTimerRef.current) {
-          clearTimeout(refreshTimerRef.current);
+        generationRef.current++;
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
         }
       };
     }
@@ -177,9 +194,12 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
       return;
     }
 
+    const generation = ++generationRef.current;
+
     authClient.auth
       .getSession(token)
       .then((session) => {
+        if (generationRef.current !== generation) return;
         setSessionToken(session.sessionToken);
         setJwt(session.jwt);
         setUser(session.user);
@@ -187,15 +207,18 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
         scheduleRefresh(session.sessionToken, session.jwt);
       })
       .catch(() => {
+        if (generationRef.current !== generation) return;
         deleteCookie(COOKIE_NAME);
       })
       .finally(() => {
+        if (generationRef.current !== generation) return;
         setIsLoading(false);
       });
 
     return () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
+      generationRef.current++;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
       }
     };
   }, [initialSession, scheduleRefresh]);
@@ -235,6 +258,13 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
 
   /** Logs out the current session. Clears the cookie, JWT, user, and apps state. */
   const logout = useCallback(async () => {
+    // Invalidate any in-flight refresh/bootstrap before we await the server —
+    // without this bump a slow getSession resolving after logout would stomp
+    // the cleared state below and leave the UI re-authenticated.
+    refreshGenerationRef.current++;
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
     if (sessionToken) {
       try {
         await authClient.auth.logout({ sessionToken });
@@ -247,9 +277,6 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     setUser(null);
     setApps([]);
     deleteCookie(COOKIE_NAME);
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-    }
   }, [sessionToken]);
 
   const isAuthenticated = sessionToken !== null && user !== null;
