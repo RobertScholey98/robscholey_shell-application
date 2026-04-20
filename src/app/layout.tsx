@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#006546',
+  themeColor: '#0d1117',
   viewportFit: 'cover',
 };
 
@@ -67,7 +67,7 @@ export default async function RootLayout({
   const initialSession = await resolveInitialSession();
 
   return (
-    <html lang="en" className={`${poppins.variable} ${sourceCodePro.variable} min-h-dvh antialiased`}>
+    <html lang="en" className={`dark ${poppins.variable} ${sourceCodePro.variable} min-h-dvh antialiased`}>
       <body className="min-h-dvh flex flex-col font-sans">
         <a
           href="#main-content"
