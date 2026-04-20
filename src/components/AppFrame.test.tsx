@@ -65,11 +65,7 @@ function dispatchChildMessage(data: Record<string, unknown>, origin = APP_ORIGIN
   window.dispatchEvent(event);
 }
 
-/** Captures messages posted to the iframe's contentWindow. */
-let postedMessages: { message: unknown; origin: string }[] = [];
-
 beforeEach(() => {
-  postedMessages = [];
   mockPush.mockClear();
   mockReplace.mockClear();
   mockLogAccess.mockClear();
@@ -119,6 +115,7 @@ describe('AppFrame', () => {
     expect(mockPostMessage).toHaveBeenCalledWith(
       {
         type: 'shell-context',
+        protocolVersion: 1,
         isEmbedded: true,
         showBackButton: true,
         shellOrigin: window.location.origin,
@@ -142,7 +139,7 @@ describe('AppFrame', () => {
     });
 
     act(() => {
-      dispatchChildMessage({ type: 'request-shell-context' });
+      dispatchChildMessage({ type: 'request-shell-context', protocolVersion: 1 });
     });
 
     expect(mockPostMessage).toHaveBeenCalledWith(
@@ -155,7 +152,7 @@ describe('AppFrame', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
     act(() => {
-      dispatchChildMessage({ type: 'navigate-to-shell' });
+      dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 1 });
     });
 
     expect(mockPush).toHaveBeenCalledWith('/');
@@ -165,7 +162,11 @@ describe('AppFrame', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
     act(() => {
-      dispatchChildMessage({ type: 'route-change', path: 'settings/profile' });
+      dispatchChildMessage({
+        type: 'route-change',
+        protocolVersion: 1,
+        path: 'settings/profile',
+      });
     });
 
     expect(window.history.pushState).toHaveBeenCalledWith(
@@ -179,7 +180,7 @@ describe('AppFrame', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
     act(() => {
-      dispatchChildMessage({ type: 'route-change', path: '/example' });
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: '/example' });
     });
 
     expect(window.history.pushState).toHaveBeenCalledWith(null, '', '/tracker/example');
@@ -189,7 +190,7 @@ describe('AppFrame', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
     act(() => {
-      dispatchChildMessage({ type: 'route-change', path: '' });
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: '' });
     });
 
     expect(window.history.pushState).toHaveBeenCalledWith(null, '', '/tracker');
@@ -206,7 +207,7 @@ describe('AppFrame', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
     act(() => {
-      dispatchChildMessage({ type: 'route-change', path: 'settings' });
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: 'settings' });
     });
 
     expect(window.history.pushState).not.toHaveBeenCalled();
@@ -223,7 +224,7 @@ describe('AppFrame', () => {
     });
 
     act(() => {
-      dispatchChildMessage({ type: 'request-jwt-refresh' });
+      dispatchChildMessage({ type: 'request-jwt-refresh', protocolVersion: 1 });
     });
 
     // Wait for the async getSession call to resolve
@@ -233,7 +234,7 @@ describe('AppFrame', () => {
 
     await vi.waitFor(() => {
       expect(mockPostMessage).toHaveBeenCalledWith(
-        { type: 'jwt-refresh', jwt: 'refreshed-jwt' },
+        { type: 'jwt-refresh', protocolVersion: 1, jwt: 'refreshed-jwt' },
         APP_ORIGIN,
       );
     });
@@ -243,7 +244,10 @@ describe('AppFrame', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
     act(() => {
-      dispatchChildMessage({ type: 'navigate-to-shell' }, 'https://evil.com');
+      dispatchChildMessage(
+        { type: 'navigate-to-shell', protocolVersion: 1 },
+        'https://evil.com',
+      );
     });
 
     expect(mockPush).not.toHaveBeenCalled();
@@ -257,6 +261,32 @@ describe('AppFrame', () => {
     });
 
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('ignores messages with a mismatched protocolVersion', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<AppFrame app={mockApp} subPath={null} />);
+
+    act(() => {
+      dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 2 });
+    });
+
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+    expect(String(warn.mock.calls[0]?.[0] ?? '')).toContain('protocol mismatch');
+  });
+
+  it('ignores structurally malformed messages', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<AppFrame app={mockApp} subPath={null} />);
+
+    act(() => {
+      // route-change without a path
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 1 });
+    });
+
+    expect(window.history.pushState).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
   });
 
   it('sends navigate-to-path to iframe on popstate with sub-path', () => {
@@ -281,7 +311,7 @@ describe('AppFrame', () => {
     });
 
     expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'navigate-to-path', path: 'settings/profile' },
+      { type: 'navigate-to-path', protocolVersion: 1, path: 'settings/profile' },
       APP_ORIGIN,
     );
   });
@@ -307,7 +337,7 @@ describe('AppFrame', () => {
     });
 
     expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'navigate-to-path', path: '' },
+      { type: 'navigate-to-path', protocolVersion: 1, path: '' },
       APP_ORIGIN,
     );
   });

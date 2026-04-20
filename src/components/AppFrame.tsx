@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ShellContextMessage, JWTRefreshMessage, NavigateToPathMessage } from '@robscholey/shell-kit';
+import {
+  PROTOCOL_VERSION,
+  parseChildMessage,
+  type ShellContextMessage,
+  type JWTRefreshMessage,
+  type NavigateToPathMessage,
+} from '@robscholey/shell-kit';
 import { useSession } from '@/contexts/SessionContext';
 import { authClient } from '@/lib/authClient';
 import type { App } from '@robscholey/contracts';
@@ -21,7 +27,9 @@ export interface AppFrameProps {
  *
  * Sends a `shell-context` message on iframe load (and on `request-shell-context`).
  * Listens for `navigate-to-shell`, `request-jwt-refresh`, `route-change`, and
- * `theme-change` messages from the child.
+ * `theme-change` messages from the child. All outgoing messages are tagged
+ * with `protocolVersion` and all incoming messages are parsed against the
+ * child→shell zod schema so malformed or wrong-version messages drop.
  */
 export function AppFrame({ app, subPath }: AppFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -37,6 +45,7 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
 
     const message: ShellContextMessage = {
       type: 'shell-context',
+      protocolVersion: PROTOCOL_VERSION,
       isEmbedded: true,
       showBackButton: true,
       shellOrigin: window.location.origin,
@@ -53,21 +62,20 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.origin !== appOrigin) return;
-      if (typeof event.data?.type !== 'string') return;
+      const message = parseChildMessage(event.data);
+      if (!message) return;
 
-      const { type } = event.data;
-
-      if (type === 'request-shell-context') {
+      if (message.type === 'request-shell-context') {
         sendShellContext();
         return;
       }
 
-      if (type === 'navigate-to-shell') {
+      if (message.type === 'navigate-to-shell') {
         router.push('/');
         return;
       }
 
-      if (type === 'request-jwt-refresh') {
+      if (message.type === 'request-jwt-refresh') {
         if (!sessionToken) return;
         authClient.auth
           .getSession(sessionToken)
@@ -77,6 +85,7 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
 
             const refreshMessage: JWTRefreshMessage = {
               type: 'jwt-refresh',
+              protocolVersion: PROTOCOL_VERSION,
               jwt: session.jwt,
             };
             contentWindow.postMessage(refreshMessage, appOrigin);
@@ -87,15 +96,12 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
         return;
       }
 
-      if (type === 'route-change') {
-        const rawPath = event.data.path;
-        if (typeof rawPath === 'string') {
-          const path = rawPath.replace(/^\/+/, '');
-          const shellPath = path ? `/${app.id}/${path}` : `/${app.id}`;
-          // Only push if the path actually changed (avoids duplicate history entries)
-          if (shellPath !== window.location.pathname) {
-            window.history.pushState(null, '', shellPath);
-          }
+      if (message.type === 'route-change') {
+        const path = message.path.replace(/^\/+/, '');
+        const shellPath = path ? `/${app.id}/${path}` : `/${app.id}`;
+        // Only push if the path actually changed (avoids duplicate history entries)
+        if (shellPath !== window.location.pathname) {
+          window.history.pushState(null, '', shellPath);
         }
         return;
       }
@@ -139,6 +145,7 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
 
       const message: NavigateToPathMessage = {
         type: 'navigate-to-path',
+        protocolVersion: PROTOCOL_VERSION,
         path: childPath,
       };
       contentWindow.postMessage(message, appOrigin);
