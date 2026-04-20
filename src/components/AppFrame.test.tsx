@@ -51,8 +51,12 @@ const mockGetSession = vi.fn().mockResolvedValue({
 });
 
 vi.mock('@/lib/authClient', () => ({
-  logAccess: (...args: unknown[]) => mockLogAccess(...args),
-  getSession: (...args: unknown[]) => mockGetSession(...args),
+  authClient: {
+    auth: {
+      logAccess: (...args: unknown[]) => mockLogAccess(...args),
+      getSession: (...args: unknown[]) => mockGetSession(...args),
+    },
+  },
 }));
 
 /** Simulates a postMessage from the child iframe. */
@@ -90,7 +94,10 @@ describe('AppFrame', () => {
   it('logs access on mount', () => {
     render(<AppFrame app={mockApp} subPath={null} />);
 
-    expect(mockLogAccess).toHaveBeenCalledWith('sess_test-token', 'tracker');
+    expect(mockLogAccess).toHaveBeenCalledWith({
+      sessionToken: 'sess_test-token',
+      appId: 'tracker',
+    });
   });
 
   it('sends shell-context on iframe load', () => {

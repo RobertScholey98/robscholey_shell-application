@@ -13,7 +13,7 @@ import {
   Label,
 } from '@robscholey/shell-kit/ui';
 import { useSession } from '@/contexts/SessionContext';
-import { AuthClientError } from '@/lib/authClient';
+import { AuthClientError } from '@robscholey/contracts';
 
 /** Props for the {@link OwnerLogin} component. */
 export interface OwnerLoginProps {

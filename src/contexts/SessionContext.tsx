@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import * as authClient from '@/lib/authClient';
+import { authClient } from '@/lib/authClient';
 import type {
   App,
   AuthResponse,
@@ -125,7 +125,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
 
     refreshTimerRef.current = setTimeout(async () => {
       try {
-        const session = await authClient.getSession(token);
+        const session = await authClient.auth.getSession(token);
         setJwt(session.jwt);
         setUser(session.user);
         setApps(session.apps);
@@ -177,7 +177,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
       return;
     }
 
-    authClient
+    authClient.auth
       .getSession(token)
       .then((session) => {
         setSessionToken(session.sessionToken);
@@ -207,7 +207,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
    */
   const login = useCallback(
     async (username: string, password: string) => {
-      const response = await authClient.login(username, password);
+      const response = await authClient.auth.login({ username, password });
       applyAuthResponse(response);
     },
     [applyAuthResponse],
@@ -221,7 +221,10 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
    */
   const submitCode = useCallback(
     async (code: string, password?: string): Promise<RequiresPasswordResponse | void> => {
-      const response = await authClient.validateCode(code, password);
+      const response = await authClient.auth.validateCode({
+        code,
+        ...(password !== undefined && { password }),
+      });
       if ('requiresPassword' in response) {
         return response;
       }
@@ -234,7 +237,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
   const logout = useCallback(async () => {
     if (sessionToken) {
       try {
-        await authClient.logout(sessionToken);
+        await authClient.auth.logout({ sessionToken });
       } catch {
         // Ignore — server-side cleanup is best-effort
       }

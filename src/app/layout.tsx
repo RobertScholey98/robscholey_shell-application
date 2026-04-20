@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Poppins, Source_Code_Pro } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { Providers } from '@/components/Providers';
-import * as authClient from '@/lib/authClient';
+import { authClient } from '@/lib/authClient';
 import type { SessionResponse } from '@robscholey/contracts';
 import './globals.css';
 
@@ -54,7 +54,7 @@ async function resolveInitialSession(): Promise<SessionResponse | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    return await authClient.getSession(token);
+    return await authClient.auth.getSession(token);
   } catch {
     return null;
   }

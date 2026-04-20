@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import * as authClient from '@/lib/authClient';
+import { authClient } from '@/lib/authClient';
 
 /** Generates per-app metadata (title, OG tags) using the public app meta endpoint. */
 export async function generateMetadata({
@@ -9,7 +9,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const appSlug = slug[0];
-  const meta = await authClient.getAppMeta(appSlug);
+  const meta = await authClient.public.getAppMeta(appSlug);
 
   if (!meta) {
     return { title: 'Rob Scholey' };

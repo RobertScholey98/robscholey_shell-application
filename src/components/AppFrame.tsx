@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ShellContextMessage, JWTRefreshMessage, NavigateToPathMessage } from '@robscholey/shell-kit';
 import { useSession } from '@/contexts/SessionContext';
-import * as authClient from '@/lib/authClient';
+import { authClient } from '@/lib/authClient';
 import type { App } from '@robscholey/contracts';
 
 /** Props for the {@link AppFrame} component. */
@@ -69,7 +69,7 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
 
       if (type === 'request-jwt-refresh') {
         if (!sessionToken) return;
-        authClient
+        authClient.auth
           .getSession(sessionToken)
           .then((session) => {
             const contentWindow = iframeRef.current?.contentWindow;
@@ -119,7 +119,7 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
   // Log access on mount (fire-and-forget)
   useEffect(() => {
     if (sessionToken) {
-      authClient.logAccess(sessionToken, app.id).catch(() => {
+      authClient.auth.logAccess({ sessionToken, appId: app.id }).catch(() => {
         // Best-effort — don't block the iframe
       });
     }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button, Input, Label } from '@robscholey/shell-kit/ui';
 import { useSession } from '@/contexts/SessionContext';
-import { AuthClientError } from '@/lib/authClient';
+import { AuthClientError } from '@robscholey/contracts';
 
 /** Access code input pinned to the bottom of the viewport. Uses sonner toasts for error feedback. */
 export function CodeInput() {
