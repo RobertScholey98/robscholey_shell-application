@@ -129,6 +129,8 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
         setJwt(session.jwt);
         setUser(session.user);
         setApps(session.apps);
+        // TODO(phase-b): generation-counter rewrite will restructure the recursive self-schedule.
+        // eslint-disable-next-line react-hooks/immutability
         scheduleRefresh(token, session.jwt);
       } catch {
         // Session expired or invalid — clear everything
@@ -169,6 +171,8 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     const token = getCookie(COOKIE_NAME);
 
     if (!token) {
+      // TODO(phase-b): fold initial-load state into a non-effect path during SessionContext rewrite.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false);
       return;
     }

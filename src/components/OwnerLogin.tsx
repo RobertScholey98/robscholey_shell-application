@@ -38,10 +38,13 @@ export function OwnerLogin({ open, onOpenChange }: OwnerLoginProps) {
   /** Reset form state when the drawer closes. */
   useEffect(() => {
     if (!open) {
+      // TODO(phase-b): revisit form-reset pattern alongside the SessionContext rewrite.
+      /* eslint-disable react-hooks/set-state-in-effect */
       setUsername('');
       setPassword('');
       setError(null);
       setIsSubmitting(false);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [open]);
 
