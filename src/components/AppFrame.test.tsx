@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
+import { ShellKitProvider } from '@robscholey/shell-kit';
 import { AppFrame } from './AppFrame';
 import type { App } from '@robscholey/contracts';
 
@@ -65,6 +66,19 @@ function dispatchChildMessage(data: Record<string, unknown>, origin = APP_ORIGIN
   window.dispatchEvent(event);
 }
 
+/**
+ * AppFrame reads theme + accent via shell-kit hooks, so the provider must be
+ * mounted in every render. The shellOrigin matches the jsdom default so
+ * `isInIframe` returns false (same-origin, shell topology).
+ */
+function renderAppFrame(props: Parameters<typeof AppFrame>[0]) {
+  return render(
+    <ShellKitProvider config={{ shellOrigin: window.location.origin }}>
+      <AppFrame {...props} />
+    </ShellKitProvider>,
+  );
+}
+
 beforeEach(() => {
   mockPush.mockClear();
   mockReplace.mockClear();
@@ -79,7 +93,7 @@ afterEach(() => {
 
 describe('AppFrame', () => {
   it('renders an iframe with the correct src and title', () => {
-    const { container } = render(<AppFrame app={mockApp} subPath={null} />);
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
     const iframe = container.querySelector('iframe');
 
     expect(iframe).toBeTruthy();
@@ -88,7 +102,7 @@ describe('AppFrame', () => {
   });
 
   it('logs access on mount', () => {
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     expect(mockLogAccess).toHaveBeenCalledWith({
       sessionToken: 'sess_test-token',
@@ -97,7 +111,7 @@ describe('AppFrame', () => {
   });
 
   it('sends shell-context on iframe load', () => {
-    const { container } = render(<AppFrame app={mockApp} subPath="settings" />);
+    const { container } = renderAppFrame({ app: mockApp, subPath: "settings" });
     const iframe = container.querySelector('iframe')!;
 
     // Mock the contentWindow.postMessage
@@ -122,14 +136,15 @@ describe('AppFrame', () => {
         jwt: 'test-jwt-123',
         user: { id: 'user-1', name: 'Rob', type: 'owner' },
         subPath: 'settings',
-        theme: 'light',
+        theme: 'dark',
+        accent: 'teal',
       },
       APP_ORIGIN,
     );
   });
 
   it('re-sends shell-context on request-shell-context message', () => {
-    const { container } = render(<AppFrame app={mockApp} subPath={null} />);
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
     const iframe = container.querySelector('iframe')!;
 
     const mockPostMessage = vi.fn();
@@ -149,7 +164,7 @@ describe('AppFrame', () => {
   });
 
   it('navigates to home on navigate-to-shell message', () => {
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 1 });
@@ -159,7 +174,7 @@ describe('AppFrame', () => {
   });
 
   it('pushes browser history on route-change message', () => {
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage({
@@ -177,7 +192,7 @@ describe('AppFrame', () => {
   });
 
   it('strips leading slash from route-change path', () => {
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: '/example' });
@@ -187,7 +202,7 @@ describe('AppFrame', () => {
   });
 
   it('handles route-change with empty path', () => {
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: '' });
@@ -204,7 +219,7 @@ describe('AppFrame', () => {
       configurable: true,
     });
 
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: 'settings' });
@@ -214,7 +229,7 @@ describe('AppFrame', () => {
   });
 
   it('sends jwt-refresh on request-jwt-refresh message', async () => {
-    const { container } = render(<AppFrame app={mockApp} subPath={null} />);
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
     const iframe = container.querySelector('iframe')!;
 
     const mockPostMessage = vi.fn();
@@ -241,7 +256,7 @@ describe('AppFrame', () => {
   });
 
   it('ignores messages from wrong origins', () => {
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage(
@@ -254,7 +269,7 @@ describe('AppFrame', () => {
   });
 
   it('ignores messages without a string type field', () => {
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage({ notAType: 123 });
@@ -265,7 +280,7 @@ describe('AppFrame', () => {
 
   it('ignores messages with a mismatched protocolVersion', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 2 });
@@ -278,7 +293,7 @@ describe('AppFrame', () => {
 
   it('ignores structurally malformed messages', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    render(<AppFrame app={mockApp} subPath={null} />);
+    renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
       // route-change without a path
@@ -290,7 +305,7 @@ describe('AppFrame', () => {
   });
 
   it('sends navigate-to-path to iframe on popstate with sub-path', () => {
-    const { container } = render(<AppFrame app={mockApp} subPath={null} />);
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
     const iframe = container.querySelector('iframe')!;
 
     const mockPostMessage = vi.fn();
@@ -317,7 +332,7 @@ describe('AppFrame', () => {
   });
 
   it('sends navigate-to-path with empty path when at app root', () => {
-    const { container } = render(<AppFrame app={mockApp} subPath={null} />);
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
     const iframe = container.querySelector('iframe')!;
 
     const mockPostMessage = vi.fn();
@@ -340,5 +355,47 @@ describe('AppFrame', () => {
       { type: 'navigate-to-path', protocolVersion: 1, path: '' },
       APP_ORIGIN,
     );
+  });
+
+  it('broadcasts theme-update to the iframe on theme-change from child', () => {
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
+    const iframe = container.querySelector('iframe')!;
+
+    const mockPostMessage = vi.fn();
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      configurable: true,
+    });
+
+    act(() => {
+      dispatchChildMessage({ type: 'theme-change', protocolVersion: 1, theme: 'light' });
+    });
+
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      { type: 'theme-update', protocolVersion: 1, theme: 'light' },
+      APP_ORIGIN,
+    );
+    expect(document.documentElement.dataset.theme).toBe('light');
+  });
+
+  it('broadcasts accent-update to the iframe on accent-change from child', () => {
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
+    const iframe = container.querySelector('iframe')!;
+
+    const mockPostMessage = vi.fn();
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      configurable: true,
+    });
+
+    act(() => {
+      dispatchChildMessage({ type: 'accent-change', protocolVersion: 1, accent: 'indigo' });
+    });
+
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      { type: 'accent-update', protocolVersion: 1, accent: 'indigo' },
+      APP_ORIGIN,
+    );
+    expect(document.documentElement.dataset.accent).toBe('indigo');
   });
 });

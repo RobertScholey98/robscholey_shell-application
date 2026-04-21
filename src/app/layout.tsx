@@ -67,7 +67,7 @@ export default async function RootLayout({
   const initialSession = await resolveInitialSession();
 
   return (
-    <html lang="en" className={`dark ${poppins.variable} ${sourceCodePro.variable} min-h-dvh antialiased`}>
+    <html lang="en" className={`${poppins.variable} ${sourceCodePro.variable} min-h-dvh antialiased`}>
       <body className="min-h-dvh flex flex-col font-sans">
         <a
           href="#main-content"

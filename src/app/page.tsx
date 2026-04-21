@@ -39,7 +39,7 @@ function ActionDrawer({
   return (
     <Drawer>
       <DrawerTrigger asChild>
-        <Button variant="outline" className="w-full sm:w-auto">
+        <Button variant="secondary" className="w-full sm:w-auto">
           {action.cardTitle}
         </Button>
       </DrawerTrigger>
@@ -120,10 +120,10 @@ function LandingView() {
         >
           {identity.name}
         </Typography>
-        <Typography variant="subtitle" align="center" className="mt-1">
+        <Typography variant="h3" align="center" className="mt-1">
           {identity.title}
         </Typography>
-        <Typography variant="muted" align="center" className="mt-2">
+        <Typography variant="small" align="center" className="mt-2">
           {tagline}
         </Typography>
 
@@ -182,7 +182,7 @@ function AuthenticatedView({ userName }: { userName: string }) {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <Typography variant="h2">Welcome, {userName}</Typography>
-            <Typography variant="muted">Your apps:</Typography>
+            <Typography variant="small">Your apps:</Typography>
           </div>
           <Button variant="ghost" onClick={() => logout()} className="text-muted-foreground">
             Log out

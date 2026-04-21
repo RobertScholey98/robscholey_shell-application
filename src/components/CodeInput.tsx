@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { toast } from 'sonner';
-import { Button, Input, Label } from '@robscholey/shell-kit/ui';
+import { Button, Input, Label, toast } from '@robscholey/shell-kit/ui';
 import { useSession } from '@/contexts/SessionContext';
 import { AuthClientError } from '@robscholey/contracts';
 

@@ -28,12 +28,12 @@ export default function ShellErrorBoundary({ error, reset }: ErrorPageProps) {
     <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
       <AlertTriangle className="h-12 w-12 text-destructive" aria-hidden="true" />
       <Typography variant="h3">Something went wrong</Typography>
-      <Typography variant="muted" className="max-w-sm">
+      <Typography variant="small" className="max-w-sm">
         {error.message || 'An unexpected error stopped this page from rendering.'}
       </Typography>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <Button onClick={reset}>Try again</Button>
-        <Button variant="outline" asChild>
+        <Button variant="secondary" asChild>
           <Link href="/">Return home</Link>
         </Button>
       </div>
