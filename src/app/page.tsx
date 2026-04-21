@@ -3,25 +3,12 @@
 import { Suspense, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Button,
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-  Input,
-  Label,
-  Separator,
-  Textarea,
-  Typography,
-} from '@robscholey/shell-kit/ui';
+import { Separator, Typography } from '@robscholey/shell-kit/ui';
 import { identity, tagline, socialLinks, actions } from '@/content/homepage';
 import { GithubIcon, LinkedInIcon } from '@/components/icons';
 import { AppSelector } from '@/components/AppSelector';
 import { CodeInput } from '@/components/CodeInput';
+import { ContactActionDrawer } from '@/components/ContactActionDrawer';
 import { OwnerLogin } from '@/components/OwnerLogin';
 import { useSession } from '@/contexts/SessionContext';
 
@@ -29,63 +16,6 @@ const iconMap = {
   github: GithubIcon,
   linkedin: LinkedInIcon,
 } as const;
-
-/** Renders a drawer triggered by a button. */
-function ActionDrawer({
-  action,
-}: {
-  action: (typeof actions)[keyof typeof actions];
-}) {
-  return (
-    <Drawer>
-      <DrawerTrigger asChild>
-        <Button variant="secondary" className="w-full sm:w-auto">
-          {action.cardTitle}
-        </Button>
-      </DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>{action.dialogTitle}</DrawerTitle>
-          <DrawerDescription>{action.dialogDescription}</DrawerDescription>
-        </DrawerHeader>
-        <form className="space-y-4 mt-4" onSubmit={(e) => e.preventDefault()}>
-          {action.fields.map((field) => (
-            <div key={field.id} className="space-y-2">
-              <Label htmlFor={field.id}>
-                {field.label}
-                {'labelSuffix' in field && (
-                  <Typography variant="small" as="span" className="font-normal">
-                    {' '}
-                    {field.labelSuffix}
-                  </Typography>
-                )}
-              </Label>
-              {field.type === 'textarea' ? (
-                <Textarea
-                  id={field.id}
-                  placeholder={field.placeholder}
-                  rows={'rows' in field ? field.rows : 3}
-                />
-              ) : (
-                <Input
-                  id={field.id}
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  inputMode={field.type === 'email' ? 'email' : undefined}
-                />
-              )}
-            </div>
-          ))}
-          <DrawerFooter>
-            <Button type="submit" size="lg" className="w-full">
-              {action.submitLabel}
-            </Button>
-          </DrawerFooter>
-        </form>
-      </DrawerContent>
-    </Drawer>
-  );
-}
 
 /** Unauthenticated view — clean lock screen with clear user journey segmentation. */
 function LandingView() {
@@ -143,8 +73,8 @@ function LandingView() {
 
         {/* Secondary actions */}
         <div className="w-full flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4">
-          <ActionDrawer action={actions.access} />
-          <ActionDrawer action={actions.message} />
+          <ContactActionDrawer action={actions.access} kind="access" />
+          <ContactActionDrawer action={actions.message} kind="message" />
         </div>
 
         {/* Social footer */}
