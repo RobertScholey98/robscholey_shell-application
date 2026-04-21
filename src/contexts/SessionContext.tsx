@@ -69,6 +69,13 @@ export interface SessionContextValue {
   user: User | null;
   /** The apps the current session has access to. */
   apps: App[];
+  /**
+   * ISO 8601 timestamp when the access code that minted this session expires.
+   * Null for owner sessions (no code) and for sessions whose code has no
+   * expiry. Surfaced so the selector can render a countdown without another
+   * round-trip.
+   */
+  codeExpiresAt: string | null;
   /** Whether the initial session validation is in progress. */
   isLoading: boolean;
   /** Whether the user is authenticated (has a valid session). */
@@ -111,6 +118,9 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
   const [jwt, setJwt] = useState<string | null>(initialSession?.jwt ?? null);
   const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
   const [apps, setApps] = useState<App[]>(initialSession?.apps ?? []);
+  const [codeExpiresAt, setCodeExpiresAt] = useState<string | null>(
+    initialSession?.codeExpiresAt ?? null,
+  );
   const [isLoading, setIsLoading] = useState(!initialSession);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,6 +149,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
         setJwt(session.jwt);
         setUser(session.user);
         setApps(session.apps);
+        setCodeExpiresAt(session.codeExpiresAt ?? null);
         // Recursive self-schedule chains successive refreshes off each new JWT's
         // expiry. The lint rule flags the forward reference to the local itself;
         // there is no non-recursive equivalent that keeps the timer chain honest.
@@ -151,6 +162,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
         setJwt(null);
         setUser(null);
         setApps([]);
+        setCodeExpiresAt(null);
         deleteCookie(COOKIE_NAME);
       }
     }, delay);
@@ -163,6 +175,11 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
       setJwt(response.jwt);
       setUser(response.user);
       setApps(response.apps);
+      // AuthResponse does not carry codeExpiresAt — that field only surfaces on
+      // the session-validation path. Reset to null here so a prior session's
+      // value can't leak into a fresh login; the first scheduled refresh will
+      // fill it in from getSession() if the new code has an expiry.
+      setCodeExpiresAt(null);
       setCookie(COOKIE_NAME, response.sessionToken, SESSION_COOKIE_MAX_AGE_DAYS);
       scheduleRefresh(response.sessionToken, response.jwt);
     },
@@ -207,6 +224,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
         setJwt(session.jwt);
         setUser(session.user);
         setApps(session.apps);
+        setCodeExpiresAt(session.codeExpiresAt ?? null);
         scheduleRefresh(session.sessionToken, session.jwt);
       })
       .catch(() => {
@@ -279,6 +297,7 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     setJwt(null);
     setUser(null);
     setApps([]);
+    setCodeExpiresAt(null);
     deleteCookie(COOKIE_NAME);
   }, [sessionToken]);
 
@@ -290,13 +309,25 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
       jwt,
       user,
       apps,
+      codeExpiresAt,
       isLoading,
       isAuthenticated,
       login,
       submitCode,
       logout,
     }),
-    [sessionToken, jwt, user, apps, isLoading, isAuthenticated, login, submitCode, logout],
+    [
+      sessionToken,
+      jwt,
+      user,
+      apps,
+      codeExpiresAt,
+      isLoading,
+      isAuthenticated,
+      login,
+      submitCode,
+      logout,
+    ],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

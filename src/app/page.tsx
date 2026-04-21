@@ -20,7 +20,7 @@ import {
 } from '@robscholey/shell-kit/ui';
 import { identity, tagline, socialLinks, actions } from '@/content/homepage';
 import { GithubIcon, LinkedInIcon } from '@/components/icons';
-import { AppNav } from '@/components/AppNav';
+import { AppSelector } from '@/components/AppSelector';
 import { CodeInput } from '@/components/CodeInput';
 import { OwnerLogin } from '@/components/OwnerLogin';
 import { useSession } from '@/contexts/SessionContext';
@@ -172,29 +172,6 @@ function LandingView() {
   );
 }
 
-/** Authenticated view — list of apps with descriptions. */
-function AuthenticatedView({ userName }: { userName: string }) {
-  const { logout } = useSession();
-
-  return (
-    <div className="flex flex-1 flex-col px-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-12">
-      <div className="w-full max-w-2xl mx-auto space-y-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <Typography variant="h2">Welcome, {userName}</Typography>
-            <Typography variant="small">Your apps:</Typography>
-          </div>
-          <Button variant="ghost" onClick={() => logout()} className="text-muted-foreground">
-            Log out
-          </Button>
-        </div>
-
-        <AppNav />
-      </div>
-    </div>
-  );
-}
-
 /** Checks that a next path is safe to redirect to (prevents open redirects). */
 function isValidNextPath(path: string): boolean {
   return path.startsWith('/') && !path.includes('://');
@@ -213,13 +190,13 @@ function HomeContent() {
     }
   }, [isAuthenticated, nextPath, router]);
 
+  if (isAuthenticated && user) {
+    return <AppSelector />;
+  }
+
   return (
     <main id="main-content" className="flex flex-1 flex-col">
-      {isAuthenticated && user ? (
-        <AuthenticatedView userName={user.name} />
-      ) : (
-        <LandingView />
-      )}
+      <LandingView />
     </main>
   );
 }

@@ -56,11 +56,14 @@ src/
     layout.tsx            # Root layout: fonts, PWA config, Providers wrapper
   components/
     AppFrame.tsx          # Full-viewport iframe + postMessage bridge
-    AppNav.tsx            # Tappable app list for authenticated users
+    AppSelector.tsx       # Post-auth app-card launcher + changelog strip
+    AuthedChrome.tsx      # Client wrapper that gates ShellChrome on auth
     CodeInput.tsx         # Access code entry form
     OwnerLogin.tsx        # Secret owner login drawer
     Providers.tsx         # SessionProvider + Toaster
+    ShellChrome.tsx       # Sticky top-bar with brand + session pill
     icons.tsx             # GitHub/LinkedIn SVG icons
+    visuals/              # Per-app identity visuals + registry
   contexts/
     SessionContext.tsx     # Auth state: session token, JWT, user, apps
   lib/

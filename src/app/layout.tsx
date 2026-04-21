@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Poppins, Source_Code_Pro } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { Providers } from '@/components/Providers';
+import { AuthedChrome } from '@/components/AuthedChrome';
 import { authClient } from '@/lib/authClient';
 import type { SessionResponse } from '@robscholey/contracts';
 import './globals.css';
@@ -75,7 +76,10 @@ export default async function RootLayout({
         >
           Skip to content
         </a>
-        <Providers initialSession={initialSession}>{children}</Providers>
+        <Providers initialSession={initialSession}>
+          <AuthedChrome />
+          {children}
+        </Providers>
       </body>
     </html>
   );
