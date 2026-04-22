@@ -5,18 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
   PROTOCOL_VERSION,
   parseChildMessage,
-  useAccent,
-  useTheme,
-  type AccentUpdateMessage,
   type JWTRefreshMessage,
   type NavigateToPathMessage,
   type ShellContextMessage,
-  type ShellTheme,
-  type Accent,
-  type ThemeUpdateMessage,
 } from '@robscholey/shell-kit';
 import { useSession } from '@/contexts/SessionContext';
 import { authClient } from '@/lib/authClient';
+import { usePageThemeRegistry } from '@/contexts/PageThemeContext';
 import type { App } from '@robscholey/contracts';
 
 /** Props for the {@link AppFrame} component. */
@@ -28,66 +23,32 @@ export interface AppFrameProps {
 }
 
 /**
- * Broadcasts a shell → child message to every `<iframe>` currently in the
- * document. Used so shell-level state updates (theme, accent) reach every
- * embedded sub-app at once — mirrors how the design calls for global
- * propagation rather than addressing the active iframe only.
- *
- * Each iframe receives the message targeted at its own origin (derived from
- * its `src`). Iframes whose `src` cannot be parsed (data URLs, blanks, etc.)
- * are skipped silently — there is no one to receive the message.
- */
-function broadcastToIframes(message: ThemeUpdateMessage | AccentUpdateMessage) {
-  const iframes = document.querySelectorAll<HTMLIFrameElement>('iframe[src]');
-  iframes.forEach((iframe) => {
-    const src = iframe.getAttribute('src');
-    if (!src) return;
-    let targetOrigin: string;
-    try {
-      targetOrigin = new URL(src, window.location.origin).origin;
-    } catch {
-      return;
-    }
-    iframe.contentWindow?.postMessage(message, targetOrigin);
-  });
-}
-
-/**
  * Renders a sub-application in a full-viewport iframe and manages the
  * bidirectional postMessage bridge between the shell and the child app.
  *
- * Sends a `shell-context` message on iframe load (and on `request-shell-context`),
- * carrying the shell-owned `theme` and `accent` so the child hydrates in
- * lock-step with the shell. Listens for `navigate-to-shell`,
- * `request-jwt-refresh`, `route-change`, `theme-change`, and `accent-change`
- * messages from the child. When a child requests a theme or accent change
- * the shell updates its own state (via {@link useTheme} / {@link useAccent}),
- * persists via `ShellKitProvider`, and broadcasts the new value as a
- * `theme-update` / `accent-update` to every mounted iframe so every
- * embedded app flips in sync. All outgoing messages are tagged with
- * `protocolVersion` and all incoming messages are parsed against the
- * child→shell zod schema so malformed or wrong-version messages drop.
+ * Sends a `shell-context` message on iframe load (and on
+ * `request-shell-context`) carrying identity-only fields — theme and accent
+ * are page-owned as of protocol v2 (Phase I), so the child's SSR layout
+ * paints the right values without needing the shell to push them.
+ *
+ * Listens for `navigate-to-shell`, `request-jwt-refresh`, `route-change`,
+ * and `page-theme` messages from the child. Page-theme declarations are
+ * stored per-iframe in the {@link usePageThemeRegistry} so future
+ * cross-cutting shell chrome (chat bubble, messaging surfaces) can render
+ * in the same visual language as whichever iframe is currently active.
+ *
+ * All outgoing messages are tagged with `protocolVersion` and all incoming
+ * messages are parsed against the child→shell zod schema so malformed or
+ * wrong-version messages drop with a console warning rather than corrupt
+ * state silently.
  */
 export function AppFrame({ app, subPath }: AppFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const router = useRouter();
   const { jwt, user, sessionToken } = useSession();
-  const { theme, setTheme } = useTheme();
-  const { accent, setAccent } = useAccent();
+  const { record: recordPageTheme } = usePageThemeRegistry();
 
   const appOrigin = new URL(app.url).origin;
-
-  // Pin theme + accent in refs so the message listener can read the latest
-  // values without resubscribing every time they change. Mirrors the pattern
-  // already used for the shell origin in useShellContext.
-  const themeRef = useRef<ShellTheme>(theme);
-  const accentRef = useRef<Accent>(accent);
-  useEffect(() => {
-    themeRef.current = theme;
-  }, [theme]);
-  useEffect(() => {
-    accentRef.current = accent;
-  }, [accent]);
 
   /** Sends the shell-context message to the iframe. */
   const sendShellContext = useCallback(() => {
@@ -103,8 +64,6 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
       jwt,
       user: user ? { id: user.id, name: user.name, type: user.type } : null,
       subPath,
-      theme: themeRef.current,
-      accent: accentRef.current,
     };
 
     contentWindow.postMessage(message, appOrigin);
@@ -158,35 +117,18 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
         return;
       }
 
-      if (message.type === 'theme-change') {
-        // Update shell-owned state (persists to localStorage + flips the
-        // shell's own <html data-theme>) and fan the new value out to every
-        // mounted iframe so all embedded apps stay in sync.
-        setTheme(message.theme);
-        const update: ThemeUpdateMessage = {
-          type: 'theme-update',
-          protocolVersion: PROTOCOL_VERSION,
-          theme: message.theme,
-        };
-        broadcastToIframes(update);
-        return;
-      }
-
-      if (message.type === 'accent-change') {
-        setAccent(message.accent);
-        const update: AccentUpdateMessage = {
-          type: 'accent-update',
-          protocolVersion: PROTOCOL_VERSION,
-          accent: message.accent,
-        };
-        broadcastToIframes(update);
+      if (message.type === 'page-theme') {
+        // The child's <PageTheme> declared (or cleared) its page-level
+        // override. Stash it per-iframe so future cross-cutting chrome
+        // can read the active iframe's accent.
+        recordPageTheme(app.id, { theme: message.theme, accent: message.accent });
         return;
       }
     }
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [appOrigin, sendShellContext, sessionToken, app.id, router, setTheme, setAccent]);
+  }, [appOrigin, sendShellContext, sessionToken, app.id, router, recordPageTheme]);
 
   // Set document title to the app name while the iframe is active
   useEffect(() => {

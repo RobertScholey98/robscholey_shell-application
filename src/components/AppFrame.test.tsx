@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, renderHook } from '@testing-library/react';
 import { ShellKitProvider } from '@robscholey/shell-kit';
 import { AppFrame } from './AppFrame';
+import {
+  PageThemeRegistryProvider,
+  usePageThemeRegistry,
+} from '@/contexts/PageThemeContext';
 import type { App } from '@robscholey/contracts';
+import type { ReactNode } from 'react';
 
 const APP_ORIGIN = 'https://tracker.robscholey.com';
 
@@ -69,14 +74,17 @@ function dispatchChildMessage(data: Record<string, unknown>, origin = APP_ORIGIN
 }
 
 /**
- * AppFrame reads theme + accent via shell-kit hooks, so the provider must be
- * mounted in every render. The shellOrigin matches the jsdom default so
- * `isInIframe` returns false (same-origin, shell topology).
+ * AppFrame depends on the PageThemeRegistry (records page-theme messages
+ * per iframe) and the ShellKitProvider (origin sanity check + future hooks).
+ * Both providers wrap every test render so message-handling effects can
+ * resolve their dependencies.
  */
 function renderAppFrame(props: Parameters<typeof AppFrame>[0]) {
   return render(
     <ShellKitProvider config={{ shellOrigin: window.location.origin }}>
-      <AppFrame {...props} />
+      <PageThemeRegistryProvider>
+        <AppFrame {...props} />
+      </PageThemeRegistryProvider>
     </ShellKitProvider>,
   );
 }
@@ -112,8 +120,8 @@ describe('AppFrame', () => {
     });
   });
 
-  it('sends shell-context on iframe load', () => {
-    const { container } = renderAppFrame({ app: mockApp, subPath: "settings" });
+  it('sends shell-context on iframe load — identity only, no theme/accent', () => {
+    const { container } = renderAppFrame({ app: mockApp, subPath: 'settings' });
     const iframe = container.querySelector('iframe')!;
 
     // Mock the contentWindow.postMessage
@@ -131,15 +139,13 @@ describe('AppFrame', () => {
     expect(mockPostMessage).toHaveBeenCalledWith(
       {
         type: 'shell-context',
-        protocolVersion: 1,
+        protocolVersion: 2,
         isEmbedded: true,
         showBackButton: true,
         shellOrigin: window.location.origin,
         jwt: 'test-jwt-123',
         user: { id: 'user-1', name: 'Rob', type: 'owner' },
         subPath: 'settings',
-        theme: 'dark',
-        accent: 'teal',
       },
       APP_ORIGIN,
     );
@@ -156,7 +162,7 @@ describe('AppFrame', () => {
     });
 
     act(() => {
-      dispatchChildMessage({ type: 'request-shell-context', protocolVersion: 1 });
+      dispatchChildMessage({ type: 'request-shell-context', protocolVersion: 2 });
     });
 
     expect(mockPostMessage).toHaveBeenCalledWith(
@@ -169,7 +175,7 @@ describe('AppFrame', () => {
     renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
-      dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 1 });
+      dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 2 });
     });
 
     expect(mockPush).toHaveBeenCalledWith('/');
@@ -181,7 +187,7 @@ describe('AppFrame', () => {
     act(() => {
       dispatchChildMessage({
         type: 'route-change',
-        protocolVersion: 1,
+        protocolVersion: 2,
         path: 'settings/profile',
       });
     });
@@ -197,7 +203,7 @@ describe('AppFrame', () => {
     renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
-      dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: '/example' });
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 2, path: '/example' });
     });
 
     expect(window.history.pushState).toHaveBeenCalledWith(null, '', '/tracker/example');
@@ -207,7 +213,7 @@ describe('AppFrame', () => {
     renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
-      dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: '' });
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 2, path: '' });
     });
 
     expect(window.history.pushState).toHaveBeenCalledWith(null, '', '/tracker');
@@ -224,7 +230,7 @@ describe('AppFrame', () => {
     renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
-      dispatchChildMessage({ type: 'route-change', protocolVersion: 1, path: 'settings' });
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 2, path: 'settings' });
     });
 
     expect(window.history.pushState).not.toHaveBeenCalled();
@@ -241,7 +247,7 @@ describe('AppFrame', () => {
     });
 
     act(() => {
-      dispatchChildMessage({ type: 'request-jwt-refresh', protocolVersion: 1 });
+      dispatchChildMessage({ type: 'request-jwt-refresh', protocolVersion: 2 });
     });
 
     // Wait for the async getSession call to resolve
@@ -251,7 +257,7 @@ describe('AppFrame', () => {
 
     await vi.waitFor(() => {
       expect(mockPostMessage).toHaveBeenCalledWith(
-        { type: 'jwt-refresh', protocolVersion: 1, jwt: 'refreshed-jwt' },
+        { type: 'jwt-refresh', protocolVersion: 2, jwt: 'refreshed-jwt' },
         APP_ORIGIN,
       );
     });
@@ -262,7 +268,7 @@ describe('AppFrame', () => {
 
     act(() => {
       dispatchChildMessage(
-        { type: 'navigate-to-shell', protocolVersion: 1 },
+        { type: 'navigate-to-shell', protocolVersion: 2 },
         'https://evil.com',
       );
     });
@@ -285,7 +291,8 @@ describe('AppFrame', () => {
     renderAppFrame({ app: mockApp, subPath: null });
 
     act(() => {
-      dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 2 });
+      // v1 — pre-Phase-I peer trying to talk to a v2 shell
+      dispatchChildMessage({ type: 'navigate-to-shell', protocolVersion: 1 });
     });
 
     expect(mockPush).not.toHaveBeenCalled();
@@ -299,7 +306,7 @@ describe('AppFrame', () => {
 
     act(() => {
       // route-change without a path
-      dispatchChildMessage({ type: 'route-change', protocolVersion: 1 });
+      dispatchChildMessage({ type: 'route-change', protocolVersion: 2 });
     });
 
     expect(window.history.pushState).not.toHaveBeenCalled();
@@ -328,7 +335,7 @@ describe('AppFrame', () => {
     });
 
     expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'navigate-to-path', protocolVersion: 1, path: 'settings/profile' },
+      { type: 'navigate-to-path', protocolVersion: 2, path: 'settings/profile' },
       APP_ORIGIN,
     );
   });
@@ -354,50 +361,69 @@ describe('AppFrame', () => {
     });
 
     expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'navigate-to-path', protocolVersion: 1, path: '' },
+      { type: 'navigate-to-path', protocolVersion: 2, path: '' },
       APP_ORIGIN,
     );
   });
 
-  it('broadcasts theme-update to the iframe on theme-change from child', () => {
-    const { container } = renderAppFrame({ app: mockApp, subPath: null });
-    const iframe = container.querySelector('iframe')!;
+  it('records page-theme declarations into the registry per iframe', () => {
+    function Composed() {
+      const registry = usePageThemeRegistry();
+      return (
+        <PageThemeRegistryProvider>
+          <AppFrame app={mockApp} subPath={null} />
+          <span data-testid="snapshot">
+            {registry.states.get(mockApp.id)?.accent ?? 'none'}
+          </span>
+        </PageThemeRegistryProvider>
+      );
+    }
 
-    const mockPostMessage = vi.fn();
-    Object.defineProperty(iframe, 'contentWindow', {
-      value: { postMessage: mockPostMessage },
-      configurable: true,
-    });
+    // Drive the registry directly via the provider so the test owns the
+    // shared map identity and can read it back through a hook after the
+    // child posts page-theme. Using renderHook here keeps the assertion
+    // pointed at the registry value rather than a rendered span.
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <ShellKitProvider config={{ shellOrigin: window.location.origin }}>
+        <PageThemeRegistryProvider>
+          <AppFrame app={mockApp} subPath={null} />
+          {children}
+        </PageThemeRegistryProvider>
+      </ShellKitProvider>
+    );
+
+    const { result } = renderHook(() => usePageThemeRegistry(), { wrapper });
 
     act(() => {
-      dispatchChildMessage({ type: 'theme-change', protocolVersion: 1, theme: 'light' });
+      dispatchChildMessage({
+        type: 'page-theme',
+        protocolVersion: 2,
+        theme: 'dark',
+        accent: 'betway',
+      });
     });
 
-    expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'theme-update', protocolVersion: 1, theme: 'light' },
-      APP_ORIGIN,
-    );
-    expect(document.documentElement.dataset.theme).toBe('light');
-  });
-
-  it('broadcasts accent-update to the iframe on accent-change from child', () => {
-    const { container } = renderAppFrame({ app: mockApp, subPath: null });
-    const iframe = container.querySelector('iframe')!;
-
-    const mockPostMessage = vi.fn();
-    Object.defineProperty(iframe, 'contentWindow', {
-      value: { postMessage: mockPostMessage },
-      configurable: true,
+    expect(result.current.states.get(mockApp.id)).toEqual({
+      theme: 'dark',
+      accent: 'betway',
     });
 
+    // A subsequent declaration overwrites the previous one (latest wins).
     act(() => {
-      dispatchChildMessage({ type: 'accent-change', protocolVersion: 1, accent: 'indigo' });
+      dispatchChildMessage({
+        type: 'page-theme',
+        protocolVersion: 2,
+        theme: null,
+        accent: 'fsgb',
+      });
     });
 
-    expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'accent-update', protocolVersion: 1, accent: 'indigo' },
-      APP_ORIGIN,
-    );
-    expect(document.documentElement.dataset.accent).toBe('indigo');
+    expect(result.current.states.get(mockApp.id)).toEqual({
+      theme: null,
+      accent: 'fsgb',
+    });
+
+    // Reference Composed so eslint doesn't flag the unused inline component.
+    void Composed;
   });
 });
