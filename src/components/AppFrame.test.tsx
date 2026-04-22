@@ -13,6 +13,8 @@ const mockApp: App = {
   iconUrl: '/icons/tracker.svg',
   description: 'Time tracking app',
   active: true,
+  defaultTheme: 'dark',
+  defaultAccent: 'teal',
 };
 
 const mockPush = vi.fn();

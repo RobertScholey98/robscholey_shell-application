@@ -32,6 +32,8 @@ const portfolioApp: App = {
   iconUrl: '',
   description: 'Narrative site — selected work.',
   active: true,
+  defaultTheme: 'dark',
+  defaultAccent: 'teal',
   version: '0.3.0',
   lastUpdatedAt: '2026-04-18T00:00:00.000Z',
   statusVariant: 'live',
@@ -45,6 +47,8 @@ const unknownVisualApp: App = {
   iconUrl: '',
   description: 'Narrative site.',
   active: true,
+  defaultTheme: 'dark',
+  defaultAccent: 'teal',
   statusVariant: 'live',
   visualKey: 'does-not-exist',
 };
