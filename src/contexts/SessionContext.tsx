@@ -232,7 +232,11 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
         deleteCookie(COOKIE_NAME);
       })
       .finally(() => {
-        if (generationRef.current !== generation) return;
+        // Deliberately *not* gated by the generation counter — scheduleRefresh
+        // in the happy-path .then bumps it, so checking here would leave the
+        // initial-mount spinner stuck on and the UI permanently in "loading".
+        // The .then / .catch branches are already gated, so stale in-flight
+        // promises can't stomp newer state; all we need here is the spinner.
         setIsLoading(false);
       });
 

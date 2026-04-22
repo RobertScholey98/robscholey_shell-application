@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { SessionProvider, useSession } from './SessionContext';
 import type { AuthResponse, SessionResponse } from '@robscholey/contracts';
 
@@ -45,10 +45,11 @@ const authResponse: AuthResponse = {
 
 /** Test consumer that renders session state and exposes the login/logout methods. */
 function Consumer() {
-  const { isAuthenticated, user, login, logout } = useSession();
+  const { isAuthenticated, isLoading, user, login, logout } = useSession();
   return (
     <div>
       <span data-testid="auth">{isAuthenticated ? 'yes' : 'no'}</span>
+      <span data-testid="loading">{isLoading ? 'yes' : 'no'}</span>
       <span data-testid="user">{user?.name ?? 'none'}</span>
       <button type="button" onClick={() => login('rob', 'pw')}>
         login
@@ -126,6 +127,66 @@ describe('SessionProvider', () => {
 
     expect(screen.getByTestId('auth').textContent).toBe('no');
     expect(screen.getByTestId('user').textContent).toBe('none');
+  });
+
+  it('hydrates from a session cookie on hard refresh and clears the loading flag', async () => {
+    // Simulates a hard-reload mid-session: the cookie survives but the
+    // in-memory JWT is gone. SessionProvider should pick up the cookie,
+    // fetch a fresh session, and land on authenticated + !isLoading.
+    document.cookie = 'rs_session=sess_cookie; Path=/';
+
+    const session: SessionResponse = {
+      sessionToken: 'sess_cookie',
+      jwt: makeJwt(60 * 60 * 1000),
+      user: owner,
+      apps: [],
+    };
+
+    let resolvePromise!: (value: SessionResponse) => void;
+    mockGetSession.mockReturnValueOnce(
+      new Promise<SessionResponse>((resolve) => {
+        resolvePromise = resolve;
+      }),
+    );
+
+    render(
+      <SessionProvider initialSession={null}>
+        <Consumer />
+      </SessionProvider>,
+    );
+
+    // Loading flag is set while the mount-time getSession is in flight.
+    expect(screen.getByTestId('loading').textContent).toBe('yes');
+    expect(screen.getByTestId('auth').textContent).toBe('no');
+
+    await act(async () => {
+      resolvePromise(session);
+    });
+
+    // waitFor lets the .then + .finally chain flush through to React state.
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('no');
+    });
+    expect(screen.getByTestId('auth').textContent).toBe('yes');
+    expect(screen.getByTestId('user').textContent).toBe('Rob');
+    expect(mockGetSession).toHaveBeenCalledWith('sess_cookie');
+  });
+
+  it('clears the loading flag and drops the cookie when hard-refresh getSession fails', async () => {
+    document.cookie = 'rs_session=sess_stale; Path=/';
+    mockGetSession.mockRejectedValueOnce(new Error('401'));
+
+    render(
+      <SessionProvider initialSession={null}>
+        <Consumer />
+      </SessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('no');
+    });
+    expect(screen.getByTestId('auth').textContent).toBe('no');
+    expect(document.cookie).not.toContain('sess_stale');
   });
 
   it('login applies the auth response and marks the user authenticated', async () => {
