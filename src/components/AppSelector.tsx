@@ -12,46 +12,28 @@ import {
   Tag,
   Typography,
 } from '@robscholey/shell-kit/ui';
-import type { App } from '@robscholey/contracts';
+import type { App, AppTag } from '@robscholey/contracts';
 import { useSession } from '@/contexts/SessionContext';
 import { formatExpiryRemaining, formatRelative } from '@/lib/format';
 import { getVisual } from '@/components/visuals/registry';
 import { changelog } from '@/content/changelog';
 
-/** Per-app top-left mono marker. Only the portfolio uses one in the handoff. */
-const VISUAL_MARK_BY_APP: Record<string, string> = {
-  portfolio: 'rs.',
-};
-
-/** Per-app tag row, keyed by app id. */
-const TAGS_BY_APP: Record<string, ReactNode> = {
-  portfolio: (
+/**
+ * Renders an app's config-sourced tag row. `null` when the app has no tags
+ * configured — the AppCard drops the tag row entirely in that case.
+ */
+function renderTags(tags: AppTag[] | undefined): ReactNode {
+  if (!tags || tags.length === 0) return null;
+  return (
     <>
-      <Tag>ts</Tag>
-      <Tag>react</Tag>
-      <Tag variant="accent">next.js</Tag>
+      {tags.map((t, i) => (
+        <Tag key={`${t.label}-${i}`} {...(t.variant ? { variant: t.variant } : {})}>
+          {t.label}
+        </Tag>
+      ))}
     </>
-  ),
-  admin: (
-    <>
-      <Tag>ts</Tag>
-      <Tag>postgres</Tag>
-      <Tag variant="accent">owner-only</Tag>
-    </>
-  ),
-  'template-child-nextjs': (
-    <>
-      <Tag>next.js</Tag>
-      <Tag>starter</Tag>
-      <Tag variant="warm">wip</Tag>
-    </>
-  ),
-  canopy: (
-    <>
-      <Tag>paused</Tag>
-    </>
-  ),
-};
+  );
+}
 
 /**
  * The `active: false` apps filtered out by `visibleAppsFor` on the auth
@@ -63,13 +45,14 @@ const TAGS_BY_APP: Record<string, ReactNode> = {
  * every consumer that doesn't need it).
  */
 const PLACEHOLDER_APPS: ReadonlyArray<
-  Pick<App, 'id' | 'name' | 'description' | 'defaultAccent'>
+  Pick<App, 'id' | 'name' | 'description' | 'defaultAccent' | 'tags'>
 > = [
   {
     id: 'canopy',
     name: 'Canopy',
     description: 'Headless content layer. Paused — brief on the portfolio.',
     defaultAccent: 'teal',
+    tags: [{ label: 'paused' }],
   },
 ];
 
@@ -142,8 +125,7 @@ export function AppSelector() {
 
       <AppGrid aria-label="Available apps">
         {apps.map((app) => {
-          const visualMark = VISUAL_MARK_BY_APP[app.id];
-          const tags = TAGS_BY_APP[app.id];
+          const tags = renderTags(app.tags);
           const meta =
             app.version && app.lastUpdatedAt
               ? `v${app.version} · ${formatRelative(app.lastUpdatedAt)} ago`
@@ -160,8 +142,8 @@ export function AppSelector() {
               accent={app.defaultAccent}
               featured={app.id === 'portfolio'}
               visual={getVisual(app.visualKey)}
-              {...(visualMark !== undefined ? { visualMark } : {})}
-              {...(tags !== undefined ? { tags } : {})}
+              {...(app.visualMark !== undefined ? { visualMark: app.visualMark } : {})}
+              {...(tags !== null ? { tags } : {})}
               {...(meta !== undefined ? { meta } : {})}
             />
           );
@@ -174,7 +156,7 @@ export function AppSelector() {
             description={app.description}
             status="soon"
             accent={app.defaultAccent}
-            tags={TAGS_BY_APP[app.id]}
+            {...(app.tags !== undefined ? { tags: renderTags(app.tags) } : {})}
           />
         ))}
       </AppGrid>
