@@ -12,6 +12,7 @@ import { CodeInput } from '@/components/CodeInput';
 import { ContactActionDrawer } from '@/components/ContactActionDrawer';
 import { OwnerLogin } from '@/components/OwnerLogin';
 import { useSession } from '@/contexts/SessionContext';
+import { parseSafeNextPath } from '@/lib/nextPath';
 
 const iconMap = {
   github: GithubIcon,
@@ -103,23 +104,20 @@ function LandingView() {
   );
 }
 
-/** Checks that a next path is safe to redirect to (prevents open redirects). */
-function isValidNextPath(path: string): boolean {
-  return path.startsWith('/') && !path.includes('://');
-}
-
 /** Homepage inner content — reads search params for intended destination redirect. */
 function HomeContent() {
-  const { isAuthenticated, user } = useSession();
+  const { isAuthenticated, user, apps } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
   const nextPath = searchParams.get('next');
 
   useEffect(() => {
-    if (isAuthenticated && nextPath && isValidNextPath(nextPath)) {
-      router.replace(nextPath);
+    if (!isAuthenticated) return;
+    const safeNext = parseSafeNextPath(nextPath, new Set(apps.map((a) => a.id)));
+    if (safeNext) {
+      router.replace(safeNext);
     }
-  }, [isAuthenticated, nextPath, router]);
+  }, [isAuthenticated, nextPath, apps, router]);
 
   if (isAuthenticated && user) {
     return (
