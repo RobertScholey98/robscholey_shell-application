@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Poppins, Source_Code_Pro } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { Providers } from '@/components/Providers';
-import { AuthedChrome } from '@/components/AuthedChrome';
 import { authClient } from '@/lib/authClient';
 import type { SessionResponse } from '@robscholey/contracts';
 import './globals.css';
@@ -72,14 +71,11 @@ export default async function RootLayout({
       <body className="min-h-dvh flex flex-col font-sans">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:text-sm focus:font-medium"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-accent focus:text-sm focus:font-medium"
         >
           Skip to content
         </a>
-        <Providers initialSession={initialSession}>
-          <AuthedChrome />
-          {children}
-        </Providers>
+        <Providers initialSession={initialSession}>{children}</Providers>
       </body>
     </html>
   );

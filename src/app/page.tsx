@@ -7,6 +7,7 @@ import { Separator, Typography } from '@robscholey/shell-kit/ui';
 import { identity, tagline, socialLinks, actions } from '@/content/homepage';
 import { GithubIcon, LinkedInIcon } from '@/components/icons';
 import { AppSelector } from '@/components/AppSelector';
+import { AuthedChrome } from '@/components/AuthedChrome';
 import { CodeInput } from '@/components/CodeInput';
 import { ContactActionDrawer } from '@/components/ContactActionDrawer';
 import { OwnerLogin } from '@/components/OwnerLogin';
@@ -88,7 +89,7 @@ function LandingView() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={link.label}
-                className="flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground active:text-foreground transition-colors"
+                className="flex items-center justify-center min-h-[44px] min-w-[44px] text-text-muted hover:text-text active:text-text transition-colors"
               >
                 <Icon className="h-5 w-5" />
               </a>
@@ -121,7 +122,12 @@ function HomeContent() {
   }, [isAuthenticated, nextPath, router]);
 
   if (isAuthenticated && user) {
-    return <AppSelector />;
+    return (
+      <>
+        <AuthedChrome />
+        <AppSelector />
+      </>
+    );
   }
 
   return (
