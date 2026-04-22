@@ -111,6 +111,25 @@ describe('AppFrame', () => {
     expect(iframe?.getAttribute('title')).toBe(mockApp.name);
   });
 
+  it('sandboxes the iframe with the minimum tokens children legitimately need', () => {
+    const { container } = renderAppFrame({ app: mockApp, subPath: null });
+    const iframe = container.querySelector('iframe');
+    const sandbox = iframe?.getAttribute('sandbox')?.split(' ').sort() ?? [];
+
+    // Regression guard: a future refactor that drops sandbox entirely or
+    // adds `allow-top-navigation` should trip this list.
+    expect(sandbox).toEqual(
+      [
+        'allow-same-origin',
+        'allow-scripts',
+        'allow-forms',
+        'allow-popups',
+        'allow-popups-to-escape-sandbox',
+        'allow-modals',
+      ].sort(),
+    );
+  });
+
   it('logs access on mount', () => {
     renderAppFrame({ app: mockApp, subPath: null });
 

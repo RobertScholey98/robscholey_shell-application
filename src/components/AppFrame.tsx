@@ -180,6 +180,14 @@ export function AppFrame({ app, subPath }: AppFrameProps) {
         title={app.name}
         className="h-full w-full border-0"
         allow="clipboard-write"
+        // Sandbox the child so a compromised iframe can't pivot into the shell.
+        // `allow-same-origin` is required for the child's session cookie /
+        // localStorage to work — safe here because every sub-app lives on a
+        // distinct origin (`*.robscholey.com` in prod, different ports in dev)
+        // so same-origin-scripts doesn't collapse the sandbox back onto the
+        // shell. `allow-popups-to-escape-sandbox` lets external links in
+        // target="_blank" open in a full browsing context.
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
         onLoad={sendShellContext}
       />
     </div>
