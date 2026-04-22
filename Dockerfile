@@ -29,6 +29,11 @@ COPY robscholey_shell-application ./robscholey_shell-application
 
 ARG NEXT_PUBLIC_AUTH_URL=http://localhost:3001
 ENV NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL
+# Shell origin gets inlined into the client bundle by Next at build time.
+# Without this, Providers.tsx's `?? 'http://localhost:3000'` fallback wins and
+# shell-kit warns at runtime that the configured origin doesn't match window.location.
+ARG NEXT_PUBLIC_SHELL_ORIGIN=http://localhost:3000
+ENV NEXT_PUBLIC_SHELL_ORIGIN=$NEXT_PUBLIC_SHELL_ORIGIN
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm --filter robscholey_shell-application build
