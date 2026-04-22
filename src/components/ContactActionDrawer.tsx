@@ -45,17 +45,17 @@ type SubmitState = 'idle' | 'submitting' | 'sent';
  * landing page. Hoists its own form state so the submit handler can read the
  * fields without prop-threading every input back to the parent.
  *
- * On `kind === 'message'`:
- * 1. Submits to the typed {@link authClient}'s `public.sendMessage`, passing
- *    the visitor's current `sessionToken` when one exists so the owner can
- *    see session context on the thread.
+ * Both `kind`s submit through the same {@link authClient} `public.sendMessage`
+ * pipeline — `access` requests are prefixed with `Access request.` in the
+ * body so the owner can sort them from regular messages in the admin inbox
+ * without a dedicated endpoint. Pattern:
+ *
+ * 1. Submits, passing the visitor's current `sessionToken` when one exists
+ *    so the owner can see session context on the thread.
  * 2. Toasts the outcome — 429 surfaces a rate-limit message, 4xx surfaces
  *    the server message, network / unexpected errors fall back to a generic.
  * 3. Swaps the form body for a "Sent" acknowledgement so the visitor
  *    doesn't double-submit.
- *
- * The `access` kind keeps the original no-op submit — full wiring lands
- * with the notifications phase.
  *
  * @param props - The action config + submit-kind discriminator.
  * @returns A trigger button that opens the drawer.
@@ -75,39 +75,62 @@ export function ContactActionDrawer({ action, kind }: ContactActionDrawerProps) 
     setState('idle');
   }
 
+  /**
+   * Builds the message body. `message` kind sends the free-form text the
+   * visitor wrote. `access` kind routes through the same inbox with an
+   * `Access request:` prefix + optional context so Rob can tell access
+   * requests apart from regular messages without a dedicated endpoint.
+   */
+  function buildSubmission(): { name: string; email: string; body: string } | null {
+    const prefix = kind === 'message' ? 'message' : 'access';
+    const name = values[`${prefix}-name`]?.trim() ?? '';
+    const email = values[`${prefix}-email`]?.trim() ?? '';
+
+    if (kind === 'message') {
+      const body = values['message-body']?.trim() ?? '';
+      if (!name || !email || !body) return null;
+      return { name, email, body };
+    }
+
+    const context = values['access-context']?.trim() ?? '';
+    if (!name || !email) return null;
+    const body = context
+      ? `Access request. ${context}`
+      : 'Access request. (no context provided)';
+    return { name, email, body };
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (kind !== 'message') return;
 
-    const name = values['message-name']?.trim() ?? '';
-    const email = values['message-email']?.trim() ?? '';
-    const body = values['message-body']?.trim() ?? '';
-
-    if (!name || !email || !body) {
-      toast.error('Please fill out every field before sending.');
+    const submission = buildSubmission();
+    if (!submission) {
+      toast.error('Please fill out every required field before sending.');
       return;
     }
 
     setState('submitting');
     try {
       await authClient.public.sendMessage({
-        name,
-        email,
-        body,
+        ...submission,
         ...(sessionToken ? { sessionToken } : {}),
       });
       setState('sent');
-      toast.success('Message sent — Rob will get back to you.');
+      toast.success(
+        kind === 'message'
+          ? 'Message sent — Rob will get back to you.'
+          : 'Access request sent — Rob will get back to you with a code.',
+      );
     } catch (err) {
       setState('idle');
       if (err instanceof AuthClientError) {
         if (err.status === 429) {
-          toast.error('Too many messages just now. Give it a minute and try again.');
+          toast.error('Too many requests just now. Give it a minute and try again.');
         } else {
           toast.error(err.message);
         }
       } else {
-        toast.error('Something went wrong sending your message.');
+        toast.error('Something went wrong sending your request.');
       }
     }
   }
@@ -142,11 +165,7 @@ export function ContactActionDrawer({ action, kind }: ContactActionDrawerProps) 
             </DrawerFooter>
           </div>
         ) : (
-          <form
-            id={formId}
-            className="space-y-4 mt-4"
-            onSubmit={kind === 'message' ? handleSubmit : (e) => e.preventDefault()}
-          >
+          <form id={formId} className="space-y-4 mt-4" onSubmit={handleSubmit}>
             {action.fields.map((field) => (
               <div key={field.id} className="space-y-2">
                 <Label htmlFor={field.id}>
