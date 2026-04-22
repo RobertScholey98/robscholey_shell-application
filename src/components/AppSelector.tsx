@@ -138,7 +138,7 @@ export function AppSelector() {
             signed in
           </Typography>
           <Typography variant="h1">Choose an app.</Typography>
-          <Typography variant="body" className="text-muted-foreground max-w-[54ch]">
+          <Typography variant="body" className="text-text-muted max-w-[54ch]">
             You&apos;re on the shell — a small launcher for the apps on this platform. Every
             app runs isolated; your session carries across.
           </Typography>

@@ -118,7 +118,7 @@ export function OwnerLogin({ open, onOpenChange }: OwnerLoginProps) {
             />
           </div>
           {error && (
-            <p id="owner-error" className="text-sm text-destructive" role="alert">
+            <p id="owner-error" className="text-sm text-danger" role="alert">
               {error}
             </p>
           )}

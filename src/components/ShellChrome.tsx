@@ -31,13 +31,13 @@ export function ShellChrome() {
   if (!user) return null;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-[color-mix(in_srgb,var(--background)_85%,transparent)] backdrop-blur-[10px]">
+    <header className="sticky top-0 z-50 border-b border-border bg-[color-mix(in_srgb,var(--bg)_85%,transparent)] backdrop-blur-[10px]">
       <div className="mx-auto grid max-w-[1100px] grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-3.5">
         <Link
           href="/"
-          className="font-mono text-[1.1rem] font-semibold text-foreground no-underline"
+          className="font-mono text-[1.1rem] font-semibold text-text no-underline"
         >
-          rs<span className="text-brand">.</span>
+          rs<span className="text-accent">.</span>
         </Link>
         <div aria-hidden />
         <SessionPill>{pillLabelFor(user)}</SessionPill>

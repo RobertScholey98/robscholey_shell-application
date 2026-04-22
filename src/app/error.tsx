@@ -26,7 +26,7 @@ export default function ShellErrorBoundary({ error, reset }: ErrorPageProps) {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-      <AlertTriangle className="h-12 w-12 text-destructive" aria-hidden="true" />
+      <AlertTriangle className="h-12 w-12 text-danger" aria-hidden="true" />
       <Typography variant="h3">Something went wrong</Typography>
       <Typography variant="small" className="max-w-sm">
         {error.message || 'An unexpected error stopped this page from rendering.'}
