@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { ShellKitProvider } from '@robscholey/shell-kit';
 import { Toaster } from '@robscholey/shell-kit/ui';
 import { SessionProvider } from '@/contexts/SessionContext';
+import { PageThemeRegistryProvider } from '@/contexts/PageThemeContext';
 import type { SessionResponse } from '@robscholey/contracts';
 
 // Shell is its own origin: postMessage to/from children targets this value.
@@ -20,22 +21,26 @@ export interface ProvidersProps {
 
 /**
  * Client-side providers wrapper. Used in the root layout to provide context
- * to all pages. Wraps the tree in `<ShellKitProvider>` so the shell itself
- * owns the theme + accent state that `AppFrame` then broadcasts to every
- * embedded sub-app. Teal is declared as the default accent — it is the
- * brand colour and the design-system default.
+ * to all pages.
+ *
+ * - `<ShellKitProvider>` carries the shell origin so child-targeted
+ *   postMessage and message-listener paths know who they're talking to.
+ *   Theme + accent are page-owned (Phase I), so the provider holds no
+ *   theme state of its own.
+ * - `<PageThemeRegistryProvider>` collects the per-iframe `page-theme`
+ *   declarations that `AppFrame` records, exposed to future
+ *   cross-cutting chrome (chat bubble, messaging surfaces) so they can
+ *   render in the visual language of whichever iframe is active.
  */
 export function Providers({ children, initialSession }: ProvidersProps) {
   return (
-    <ShellKitProvider
-      config={{ shellOrigin: SHELL_ORIGIN }}
-      defaultTheme="dark"
-      defaultAccent="teal"
-    >
-      <SessionProvider initialSession={initialSession}>
-        {children}
-        <Toaster position="top-center" richColors />
-      </SessionProvider>
+    <ShellKitProvider config={{ shellOrigin: SHELL_ORIGIN }}>
+      <PageThemeRegistryProvider>
+        <SessionProvider initialSession={initialSession}>
+          {children}
+          <Toaster position="top-center" richColors />
+        </SessionProvider>
+      </PageThemeRegistryProvider>
     </ShellKitProvider>
   );
 }
