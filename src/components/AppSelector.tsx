@@ -12,29 +12,11 @@ import {
   Tag,
   Typography,
 } from '@robscholey/shell-kit/ui';
-import type { Accent } from '@robscholey/shell-kit';
 import type { App } from '@robscholey/contracts';
 import { useSession } from '@/contexts/SessionContext';
 import { formatExpiryRemaining, formatRelative } from '@/lib/format';
 import { getVisual } from '@/components/visuals/registry';
 import { changelog } from '@/content/changelog';
-
-/**
- * Per-app accent mapping. Design-system-level identity — kept in the shell
- * because it encodes how the selector paints each card, not what the app
- * itself knows. A later iteration may promote this to an `accent` field on
- * `appsConfig.json`; until then a small hardcoded map is the lower-friction
- * path and reads naturally against the handoff.
- */
-const ACCENT_BY_APP: Record<string, Accent> = {
-  portfolio: 'teal',
-  admin: 'fsgb',
-  'template-child-nextjs': 'mono',
-  canopy: 'teal',
-};
-
-/** Default accent when an app isn't in the map above. */
-const DEFAULT_ACCENT: Accent = 'teal';
 
 /** Per-app top-left mono marker. Only the portfolio uses one in the handoff. */
 const VISUAL_MARK_BY_APP: Record<string, string> = {
@@ -80,11 +62,14 @@ const TAGS_BY_APP: Record<string, ReactNode> = {
  * and a second `SessionResponse` field would leak inactive-app metadata to
  * every consumer that doesn't need it).
  */
-const PLACEHOLDER_APPS: ReadonlyArray<Pick<App, 'id' | 'name' | 'description'>> = [
+const PLACEHOLDER_APPS: ReadonlyArray<
+  Pick<App, 'id' | 'name' | 'description' | 'defaultAccent'>
+> = [
   {
     id: 'canopy',
     name: 'Canopy',
     description: 'Headless content layer. Paused — brief on the portfolio.',
+    defaultAccent: 'teal',
   },
 ];
 
@@ -157,7 +142,6 @@ export function AppSelector() {
 
       <AppGrid aria-label="Available apps">
         {apps.map((app) => {
-          const accent = ACCENT_BY_APP[app.id] ?? DEFAULT_ACCENT;
           const visualMark = VISUAL_MARK_BY_APP[app.id];
           const tags = TAGS_BY_APP[app.id];
           const meta =
@@ -173,7 +157,7 @@ export function AppSelector() {
               title={app.name}
               description={app.description}
               status={app.statusVariant ?? 'live'}
-              accent={accent}
+              accent={app.defaultAccent}
               featured={app.id === 'portfolio'}
               visual={getVisual(app.visualKey)}
               {...(visualMark !== undefined ? { visualMark } : {})}
@@ -189,7 +173,7 @@ export function AppSelector() {
             title={app.name}
             description={app.description}
             status="soon"
-            accent={ACCENT_BY_APP[app.id] ?? DEFAULT_ACCENT}
+            accent={app.defaultAccent}
             tags={TAGS_BY_APP[app.id]}
           />
         ))}
